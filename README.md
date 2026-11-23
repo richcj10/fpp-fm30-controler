@@ -25,7 +25,7 @@ What it does:
 ## Install
 
 1. In FPP, open **Content Setup → Plugin Manager**, paste `https://raw.githubusercontent.com/richcj10/fpp-fm30-controler/main/pluginInfo.json` and install. This installs and starts the `fpp-fm30` systemd service.
-2. Free the Pi's UART. This needs a reboot:
+2. Check the Pi's UART: `ls -l /dev/serial0` should point to `ttyAMA0`, with no `console=serial0` in `/proc/cmdline`. FPP images with `dtoverlay=miniuart-bt` already have this, so you can skip this step. Otherwise free it (needs a reboot):
    ```
    sudo /home/fpp/media/plugins/fpp-fm30-controler/scripts/setup_uart.sh          # dry run: shows what it would change
    sudo /home/fpp/media/plugins/fpp-fm30-controler/scripts/setup_uart.sh --apply  # then reboot
@@ -54,7 +54,7 @@ What it does:
 | `fm30d/commands.py` | command parsing/sanitising (port of FM30-Control `Commands.cpp` / `Sanitize.cpp`) |
 | `fm30d/pager.py` | templates, PS word pages, RT pages |
 | `fm30d/show.py` | follows FPP: running playlist, x/N, tags, piece list |
-| `fm30.php`, `api.php`, `menu.inc` | FPP page; `api.php` proxies to the service |
+| `fm30.php`, `fm30api.php`, `menu.inc` | FPP page; `fm30api.php` proxies to the service (never name it `api.php`: FPP loads every plugin api.php into its own API) |
 | `scripts/` | `fpp_install.sh`, `fpp_uninstall.sh`, `setup_uart.sh` |
 
 Settings and names are stored in `/home/fpp/media/config/fpp-fm30-settings.json` and `fpp-fm30-names.json`. They are kept on uninstall.

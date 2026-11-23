@@ -22,6 +22,7 @@ GAP_S = 0.005
 QUEUE_LEN = 10
 RX_MAX = 1024
 REOPEN_S = 5.0
+ALIVE_S = 6.0
 
 
 class LinkError(Exception):
@@ -119,6 +120,9 @@ class Link:
         self.stats = collections.Counter()
         self.connected = False
         self.last_rx = 0.0
+        self._last_rx_mono = 0.0
+        self._was_alive = False
+        self.on_alive = None         # callback() when the STM32 starts answering again
         self._t = None
         self._q = collections.deque()
         self._lock = threading.Lock()
@@ -158,6 +162,14 @@ class Link:
         if not e.done.wait(timeout):
             return ("timeout", "", "")
         return e.result
+
+    def alive(self):
+        """Port open and the STM32 answered within the last few seconds."""
+        a = self.connected and time.monotonic() - self._last_rx_mono < ALIVE_S
+        if self._was_alive and not a:
+            self._was_alive = False
+            self.log("link: STM32 not responding (is it wired/powered?); probing every few seconds")
+        return a
 
     def pending_status(self):
         with self._lock:
@@ -217,13 +229,16 @@ class Link:
             with self._lock:
                 e = self._inflight
                 if e and now - self._sent_at >= TIMEOUT_S:
+                    quiet = not self._was_alive          # don't flood the log while nothing answers
                     if e.retry and e.tries < 2:
                         self.stats["retries"] += 1
-                        self.log(f"link: timeout, retrying: {e.line}")
+                        if not quiet:
+                            self.log(f"link: timeout, retrying: {e.line}")
                         self._send(e)
                     else:
                         self.stats["timeouts"] += 1
-                        self.log(f"link: timeout: {e.line}")
+                        if not quiet:
+                            self.log(f"link: timeout: {e.line}")
                         self._finish("timeout", "")
                 if self._inflight is None and self._q and now - self._done_at >= GAP_S:
                     self._inflight = self._q.popleft()
@@ -260,6 +275,12 @@ class Link:
 
     def _line(self, line):
         self.last_rx = time.time()
+        self._last_rx_mono = time.monotonic()
+        if not self._was_alive:
+            self._was_alive = True
+            self.log("link: STM32 answering")
+            if self.on_alive:
+                threading.Thread(target=self.on_alive, daemon=True).start()
         with self._lock:
             e = self._inflight
             if line.startswith("{"):

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Frees the Pi 4's full UART (PL011) on GPIO14/15 for the FM30:
-#   - enable_uart=1 and dtoverlay=disable-bt in config.txt (Bluetooth off,
-#     so /dev/serial0 -> ttyAMA0, a stable 115200 clock)
+#   - enable_uart=1 and dtoverlay=disable-bt in config.txt (Bluetooth off;
+#     miniuart-bt is also fine), so /dev/serial0 -> ttyAMA0 (PL011)
 #   - removes the serial console from cmdline.txt
 #   - disables hciuart / serial-getty on serial0
 # Dry run by default; pass --apply to change files (backups *.fm30bak). Reboot after.
@@ -14,7 +14,7 @@ echo "Boot dir: $BOOT  ($( [ $APPLY = 1 ] && echo APPLYING || echo 'dry run, use
 [ $APPLY = 1 ] && cp -n $CFG $CFG.fm30bak && cp -n $CMD $CMD.fm30bak
 
 grep -q '^enable_uart=1' $CFG || run "echo 'enable_uart=1' >> $CFG"
-grep -q '^dtoverlay=disable-bt' $CFG || run "echo 'dtoverlay=disable-bt' >> $CFG"
+grep -qE '^dtoverlay=(disable-bt|miniuart-bt|pi3-disable-bt|pi3-miniuart-bt)' $CFG || run "echo 'dtoverlay=disable-bt' >> $CFG"
 if grep -qE 'console=(serial0|ttyAMA0|ttyS0),[0-9]+ ?' $CMD; then
   run "sed -i -E 's/console=(serial0|ttyAMA0|ttyS0),[0-9]+ ?//g' $CMD"
 fi

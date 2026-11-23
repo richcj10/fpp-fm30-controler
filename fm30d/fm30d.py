@@ -112,7 +112,7 @@ class Daemon:
         self.link = Link(self.s["port"], log=self.log)
         self.link.on_json = self._on_json
         self.link.on_reset = self._on_reset
-        self.link.on_connect = self._on_reset
+        self.link.on_alive = self._on_reset
 
     # ------------------------------------------------------------ util
     def log(self, msg):
@@ -152,6 +152,8 @@ class Daemon:
                 self.tx_state = "error"          # STM32 came back with its SAVEd TX state: re-assert
                 self.tx_tried = 0.0
         for slot, (top, bottom) in sorted(msgs.items()):
+            if not (top or bottom):
+                continue                 # a reset STM32 starts with empty slots
             try:
                 self.send(C.build_lcd_msg(int(slot), top, bottom))
             except C.CommandError:
@@ -160,12 +162,13 @@ class Daemon:
     # ------------------------------------------------------------ loops
     def status_loop(self):
         while True:
+            alive = self.link.alive()
             if self.link.connected and not self.link.pending_status():
                 try:
                     self.link.submit("STATUS", retry=False)
                 except LinkError:
                     pass
-            time.sleep(STATUS_PERIOD_S)
+            time.sleep(STATUS_PERIOD_S if alive else 5.0)   # slow probe while nothing answers
 
     def show_loop(self):
         last_poll = 0.0
@@ -193,17 +196,16 @@ class Daemon:
         if not self.s.get("tx_auto"):
             self.was_playing = playing
             return
+        if not self.link.alive():
+            return                      # act on the show state once the STM32 answers
         if playing:
             self.idle_since = None
             retry = self.tx_state == "error" and time.monotonic() - self.tx_tried >= 5.0
-            if (self.was_playing is not True or retry) and self.link.connected:
+            if self.was_playing is not True or retry:
                 self.log("show playing: TX ON" + (" (retry)" if retry else ""))
                 self.tx_tried = time.monotonic()
                 r = self.send("TX ON")
                 self.tx_state = "on" if r[0] == "ok" else "error"
-            elif self.was_playing is not True:
-                self.tx_state = "error"          # link not up yet: retry when it is
-                self.tx_tried = 0.0
         else:
             if self.was_playing is not False and self.idle_since is None:
                 self.idle_since = time.monotonic()
@@ -258,7 +260,7 @@ class Daemon:
                 self.ps_next = self.rt_next = 0.0
 
     def _pager_tick(self):
-        if not self.s.get("rds_auto") or not self.link.connected:
+        if not self.s.get("rds_auto") or not self.link.alive():
             return
         t = time.monotonic()
         with self.lock:
@@ -288,7 +290,7 @@ class Daemon:
             msg = (cnt or "SHOW", f.get("title", ""))
         else:
             msg = ("FPP", "idle " + local_ip())
-        if msg != self.sent_lcd1 and self.link.connected:
+        if msg != self.sent_lcd1 and self.link.alive():
             if self.send(C.build_lcd_msg(1, *msg), retry=False)[0] == "ok":
                 self.sent_lcd1 = msg
 

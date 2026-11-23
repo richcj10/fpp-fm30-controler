@@ -1,5 +1,6 @@
 <?php
-// JSON proxy: browser -> plugin.php?plugin=fpp-fm30-controler&page=api.php&nopage=1&p=<endpoint>
+// NOTE: must NOT be named api.php - FPP includes every plugin's api.php into its own /api router.
+// JSON proxy: browser -> plugin.php?plugin=fpp-fm30-controler&page=fm30api.php&nopage=1&p=<endpoint>
 //          -> fm30d on 127.0.0.1 (never exposed on the network itself).
 header('Content-Type: application/json');
 header('Cache-Control: no-store');

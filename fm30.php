@@ -190,7 +190,7 @@
 
 <script>
 (function () {
-  const API = 'plugin.php?plugin=fpp-fm30-controler&page=api.php&nopage=1&p=';
+  const API = 'plugin.php?plugin=fpp-fm30-controler&page=fm30api.php&nopage=1&p=';
   const PROTECTED = ['FREQ','POWER','U6TRIM','U6','VTSCALE','RDSLEVEL','DACTEST','DEFAULTS'];
   const PTY = ['None','News','Information','Sports','Talk','Rock','Classic Rock','Adult Hits','Soft Rock','Top 40',
     'Country','Oldies','Soft Music','Nostalgia','Jazz','Classical','R&B','Soft R&B','Language','Religious Music',
