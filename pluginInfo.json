@@ -1,0 +1,17 @@
+{
+  "repoName": "fpp-fm30-controler",
+  "name": "FM30 Transmitter",
+  "author": "richcj10",
+  "description": "Runs a Ramsey FM30 (STM32 controller) straight from FPP over the Pi UART: TX on/off with the show, now-playing RDS with a show counter, and full transmitter control. Replaces the ESP8266 front-end.",
+  "homeURL": "https://github.com/richcj10/fpp-fm30-controler",
+  "srcURL": "https://github.com/richcj10/fpp-fm30-controler.git",
+  "bugURL": "https://github.com/richcj10/fpp-fm30-controler/issues",
+  "versions": [
+    {
+      "minFPPVersion": "9.0",
+      "maxFPPVersion": "0",
+      "branch": "main",
+      "sha": ""
+    }
+  ]
+}
