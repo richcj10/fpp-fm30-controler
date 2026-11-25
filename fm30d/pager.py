@@ -6,7 +6,7 @@ RT  - 64 chars. Longer text is split at word boundaries; when the template
       starts with {count}, every page starts with the counter ("2/4 ...").
 
 Template tokens: {count} {n} {N} {title} {artist} {short} {extra} {station}
-{next}. Empty tokens take their neighbouring " - " / " | " separators with
+{next} (any case: {STATION} works too). Empty tokens take their neighbouring " - " / " | " separators with
 them, so "{count} {title} - {artist}" with no artist renders "2/4 Title".
 """
 import re
@@ -18,8 +18,17 @@ SEP = r"(?:-|\||/|:|,)"
 
 
 def render(template, fields):
-    out = TOKEN.sub(lambda m: str(fields.get(m.group(1), "") or ""), template or "")
-    return tidy(out)
+    empty = []
+
+    def sub(m):
+        v = str(fields.get(m.group(1).lower(), "") or "")
+        if not v:
+            empty.append(m.group(1))
+        return v
+    out = TOKEN.sub(sub, template or "")
+    # separators are only cleaned up around tokens that came out empty, so
+    # text typed by hand ("BABY,") is kept as written
+    return tidy(out) if empty else re.sub(r"\s+", " ", out).strip()
 
 
 def tidy(s):

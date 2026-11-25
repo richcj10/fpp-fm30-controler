@@ -87,7 +87,7 @@
     <div class="card"><h3>Pieces (all playlists on the show master)</h3>
       <div class="help" style="margin-left:0">Names belong to the media file, so a piece used in several playlists has one set of names.
         <b>Show piece</b> = counted in x/N. <b>Interstitial</b> = not counted (Station ID, intros). Lead-in/lead-out are never counted.
-        Empty fields fall back to the song's tags, then the file name.</div>
+        Empty fields fall back to the song's tags, then the file name. Click a piece to edit its names and RDS text.</div>
       <div class="row"><button class="buttons" onclick="FM.loadPieces()">Reload</button><span id="piecehost" class="kv"></span></div>
       <table><thead><tr><th>Piece</th><th>Type</th><th>Title</th><th>Artist</th><th>In playlists</th></tr></thead>
         <tbody id="piecerows"></tbody></table>
@@ -105,6 +105,17 @@
       <div class="help">Tokens: {count} {n} {N} {title} {artist} {short} {extra} {station} {next}. Leave empty to use the Settings templates.</div>
       <div class="row"><label>PS page time (s)</label><input type="number" id="e-ps_s" step="0.5" min="1" max="30" style="width:80px" placeholder="global">
         <label style="min-width:0">RT page time (s)</label><input type="number" id="e-rt_s" step="1" min="4" max="120" style="width:80px" placeholder="global"></div>
+      <h4 style="margin:12px 0 4px">RDS text</h4>
+      <div class="row"><label>Custom text</label><input type="checkbox" id="e-custom" onchange="FM.customToggle()">
+        <span class="kv">off = built from the names and templates above (shown greyed). On = these lines are sent exactly as written.</span></div>
+      <div class="row" style="align-items:flex-start"><label>PS lines<br><span class="kv">8 chars, one per line</span></label>
+        <textarea id="e-ps_lines" rows="6" cols="14" class="mono" spellcheck="false"></textarea>
+        <label style="min-width:0">RT lines<br><span class="kv">64 chars, one per line</span></label>
+        <textarea id="e-rt_lines" rows="6" cols="70" class="mono" spellcheck="false"></textarea></div>
+      <div class="help">Each line rotates in turn while this piece plays; add your own lines anywhere (e.g. <span class="mono">MERRY</span> / <span class="mono">XMAS</span>, or
+        <span class="mono">{count} Merry Christmas from our house</span>). Longer lines are split automatically.
+        Tokens stay live: <span class="mono">{count}</span> (x/N, repeated on every page when it starts the line), <span class="mono">{station}</span>, <span class="mono">{title}</span>, <span class="mono">{artist}</span>, <span class="mono">{next}</span>...
+        <button class="buttons" onclick="FM.refill()">Refill from names</button></div>
       <div class="row"><label>Preview in playlist</label><select id="e-pl"></select></div>
       <div><span class="kv">PS:</span> <span id="pv-ps"></span></div>
       <div><span class="kv">RT:</span> <span id="pv-rt"></span></div>
@@ -351,19 +362,47 @@
     $('piecehost').textContent = 'from ' + d.host;
     $('piecerows').innerHTML = d.pieces.map((p, i) => {
       const typ = p.type === 'show' ? '<span class="badge show">show</span>' : '<span class="badge inter">interstitial</span>';
-      const need = p.effective.needs_name ? ' <span class="badge need">needs name</span>' : '';
+      const need = (p.effective.needs_name ? ' <span class="badge need">needs name</span>' : '') +
+        (p.names.ps_lines || p.names.rt_lines ? ' <span class="badge show">custom RDS</span>' : '');
       return '<tr class="piece' + (SEL === p.key ? ' sel' : '') + '" onclick="FM.edit(' + i + ')"><td class="mono">' + esc(p.key) + need +
         '</td><td>' + typ + (p.type_auto ? ' <span class="kv">auto</span>' : '') + '</td><td>' + esc(p.effective.title) +
         '</td><td>' + esc(p.effective.artist) + '</td><td>' + esc(p.playlists.join(', ')) + '</td></tr>';
     }).join('') || '<tr><td colspan="5">No playlists found on the show master.</td></tr>';
   };
   const FIELDS = ['type', 'title', 'artist', 'short', 'extra', 'ps_template', 'rt_template', 'ps_s', 'rt_s'];
+  const LINES = ['ps_lines', 'rt_lines'];
+  let AUTO = {ps: [], rt: []};
+  function linesOf(id) { return $(id).value.split('\n').map(l => l.trim()).filter(l => l); }
+  function setCustom(on) {
+    $('e-custom').checked = on;
+    LINES.forEach(k => { $('e-' + k).readOnly = !on; $('e-' + k).style.opacity = on ? 1 : 0.55; });
+  }
+  function showAuto() {
+    if ($('e-custom').checked) return;
+    $('e-ps_lines').value = AUTO.ps.join('\n');
+    $('e-rt_lines').value = AUTO.rt.join('\n');
+  }
+  FM.customToggle = function () {
+    const on = $('e-custom').checked;
+    setCustom(on);
+    if (on && !linesOf('e-ps_lines').length && !linesOf('e-rt_lines').length) FM.refill(); else showAuto();
+    FM.preview();
+  };
+  FM.refill = function () {
+    $('e-ps_lines').value = AUTO.ps.join('\n');
+    $('e-rt_lines').value = AUTO.rt.join('\n');
+    FM.preview();
+  };
   FM.edit = function (i) {
     const p = PIECES.pieces[i];
     SEL = p.key;
     $('editor').style.display = 'block';
     txt('e-key', p.key);
     FIELDS.forEach(k => { $('e-' + k).value = p.names[k] != null ? p.names[k] : ''; });
+    const custom = !!(p.names.ps_lines || p.names.rt_lines);
+    AUTO = {ps: [], rt: []};
+    LINES.forEach(k => { $('e-' + k).value = (p.names[k] || []).join('\n'); });
+    setCustom(custom);
     txt('e-ttag', p.tags.title ? 'tag: ' + p.tags.title : 'no tag');
     txt('e-atag', p.tags.artist ? 'tag: ' + p.tags.artist : '');
     txt('e-typeauto', p.type_auto ? 'auto = ' + p.type : '');
@@ -375,12 +414,15 @@
   function editorNames() {
     const o = {};
     FIELDS.forEach(k => { const v = val('e-' + k); if (v !== '') o[k] = (k === 'ps_s' || k === 'rt_s') ? Number(v) : v; });
+    if ($('e-custom').checked) LINES.forEach(k => { const l = linesOf('e-' + k); if (l.length) o[k] = l; });
     return o;
   }
   FM.preview = async function () {
     if (!SEL) return;
     const d = await call('preview', 'POST', {key: SEL, playlist: val('e-pl'), names: editorNames()});
     if (!d.ps) return;
+    AUTO = {ps: d.auto_ps || [], rt: d.auto_rt || []};
+    showAuto();
     $('pv-ps').innerHTML = pages(d.ps) + ' <span class="kv">' + d.ps_s + ' s each' + (d.n ? ' · piece ' + d.n + '/' + d.N : ' · not counted') + '</span>';
     $('pv-rt').innerHTML = d.rt.map(p => '<div><span class="page">' + esc(p) + '</span><span class="cnt' + (p.length > 64 ? ' over' : '') + '">' + p.length + '/64</span></div>').join('') +
       '<span class="kv">' + d.rt.length + ' page' + (d.rt.length === 1 ? '' : 's') + ', ' + d.rt_s + ' s each</span>';
@@ -392,6 +434,8 @@
   FM.clearPiece = async function () {
     if (!confirm('Clear all custom names for ' + SEL + '?')) return;
     FIELDS.forEach(k => { $('e-' + k).value = ''; });
+    LINES.forEach(k => { $('e-' + k).value = ''; });
+    setCustom(false);
     await FM.savePiece(); FM.preview();
   };
   FM.loadLog = async function () { const d = await call('log'); $('log').textContent = (d.log || []).join('\n'); };
@@ -408,7 +452,7 @@
   $('r-pty').innerHTML = PTY.map((n, i) => '<option value="' + i + '">' + i + ' ' + esc(n) + '</option>').join('');
   $('r-flags').innerHTML = ['TP', 'TA', 'MS', 'STEREO'].map(f => '<span style="margin-right:10px">' + f +
     ' <button class="buttons" onclick="FM.cmd(\'' + f + ' 1\')">1</button><button class="buttons" onclick="FM.cmd(\'' + f + ' 0\')">0</button></span>').join('');
-  document.querySelectorAll('#editor input, #editor select').forEach(el => el.addEventListener('input', () => {
+  document.querySelectorAll('#editor input, #editor select, #editor textarea').forEach(el => el.addEventListener('input', () => {
     clearTimeout(pvTimer); pvTimer = setTimeout(FM.preview, 300);
   }));
   try { const t = localStorage.getItem('fm30tab'); if (t) activate(t); } catch (e) {}

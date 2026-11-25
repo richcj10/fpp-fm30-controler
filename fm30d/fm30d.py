@@ -3,7 +3,7 @@
 
 Replaces the ESP8266 front-end: talks to the STM32 over the Pi UART, follows
 the FPP show (TX on/off, now-playing RDS with x/N counter) and serves a
-small JSON API on 127.0.0.1 for the plugin's web page (proxied by api.php).
+small JSON API on 127.0.0.1 for the plugin's web page (proxied by fm30api.php).
 
   python3 fm30d.py [--config DIR] [--port /dev/serial0|socket://host:port]
 """
@@ -27,10 +27,13 @@ import pager as P               # noqa: E402
 from link import Link, LinkError  # noqa: E402
 from show import Show, SHOW, INTERSTITIAL  # noqa: E402
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 STATUS_PERIOD_S = 2.0
 SAVE_MIN_GAP_S = 10.0
-PIECE_KEYS = {"title", "artist", "short", "extra", "type", "ps_s", "rt_s", "ps_template", "rt_template"}
+PIECE_KEYS = {"title", "artist", "short", "extra", "type", "ps_s", "rt_s", "ps_template", "rt_template",
+              "ps_lines", "rt_lines"}
+LINE_KEYS = ("ps_lines", "rt_lines")   # custom RDS text: list of lines, tokens allowed
+MAX_LINES = 20
 
 DEFAULTS = {
     "port": "/dev/serial0",
@@ -220,28 +223,63 @@ class Daemon:
 
     # ------------------------------------------------------------ RDS layout
     def piece_layout(self, key, host, n, N, typ, playing=True, nxt=""):
+        """-> {"ps", "rt", "ps_s", "rt_s", "auto_ps", "auto_rt"}.
+
+        A piece with custom lines (ps_lines / rt_lines) uses them as-is: each
+        line is rendered (tokens such as {count} stay live) and split to fit.
+        auto_ps / auto_rt are the lines the templates would give, with the
+        tag text filled in but {count} {station} {next} kept as tokens: the
+        editor's starting point for custom text.
+        """
         s = self.s
         o = self.names_store.data.get(key) or {}
         f = self.show.fields(host, key) if key else {}
         fields = dict(f)
         fields.update({"n": n or "", "N": N or "", "count": P.counter(n, N),
                        "station": s.get("station_ps", ""), "next": nxt})
-        if not playing or not key:
+        up, center = s.get("ps_uppercase", True), s.get("ps_center", True)
+        live = playing and key
+        if not live:
             ps_t, rt_t = s.get("idle_ps", "{station}"), s.get("idle_rt", "")
         else:
             ps_t = o.get("ps_template") or s.get("ps_template", "{short}")
             rt_t = o.get("rt_template") or (s.get("rt_template_show") if typ == SHOW else s.get("rt_template_inter"))
-        ps_text = P.render(ps_t, fields)
-        ps = P.ps_pages(ps_text, s.get("ps_uppercase", True), s.get("ps_center", True)) if ps_text else []
-        station = P.ps_pages(s.get("station_ps", ""), False, s.get("ps_center", True))[0] if s.get("station_ps") else ""
-        if playing and key and s.get("station_between") and station and ps and ps != [station]:
-            ps = ps + [station]
+        between = bool(live and s.get("station_between") and s.get("station_ps"))
+
+        # automatic lines (templates), as editable text
+        keep = dict(fields, count="{count}" if fields["count"] else "", station="{station}", next="{next}")
+        ps_auto_text = P.render(ps_t, fields)
+        auto_ps = [p.strip() for p in P.ps_pages(ps_auto_text, up, False) if p.strip()] if ps_auto_text else []
+        if between and auto_ps:
+            auto_ps.append("{station}")
+        auto_rt = [P.render(rt_t, keep)] if P.render(rt_t, keep) else []
+
+        if live and o.get("ps_lines"):
+            ps = []
+            for line in o["ps_lines"]:
+                txt = P.render(line, fields)
+                if txt:
+                    ps += P.ps_pages(txt, up, center)
+        else:
+            ps_text = P.render(ps_t, fields)
+            ps = P.ps_pages(ps_text, up, center) if ps_text else []
+            station = P.ps_pages(s.get("station_ps", ""), False, center)[0] if s.get("station_ps") else ""
+            if between and station and ps and ps != [station]:
+                ps = ps + [station]
         if not ps:
-            ps = [station or "FM30"]
-        rt = P.rt_pages(rt_t, fields)
+            ps = [P.ps_pages(s["station_ps"], False, center)[0] if s.get("station_ps") else "FM30"]
+        if live and o.get("rt_lines"):
+            rt = []
+            for line in o["rt_lines"]:
+                if P.render(line, fields):
+                    rt += P.rt_pages(line, fields)
+            rt = rt or P.rt_pages(rt_t, fields)
+        else:
+            rt = P.rt_pages(rt_t, fields)
         return {"ps": ps, "rt": rt,
                 "ps_s": float(o.get("ps_s") or s.get("ps_page_s", 2.5)),
-                "rt_s": float(o.get("rt_s") or s.get("rt_page_s", 10))}
+                "rt_s": float(o.get("rt_s") or s.get("rt_page_s", 10)),
+                "auto_ps": auto_ps, "auto_rt": auto_rt}
 
     def _relayout(self, now):
         if not self.s.get("rds_auto"):
@@ -379,6 +417,21 @@ class Daemon:
             if k == "type":
                 if v not in (SHOW, INTERSTITIAL):
                     raise C.CommandError("type must be show or interstitial")
+            elif k in LINE_KEYS:
+                if isinstance(v, str):
+                    v = v.split("\n")
+                if not isinstance(v, list) or len(v) > MAX_LINES:
+                    raise C.CommandError(f"{k}: up to {MAX_LINES} lines")
+                lines = []
+                for line in v:
+                    line = str(line).strip()
+                    if len(line) > 200 or any(ord(c) < 0x20 for c in line):
+                        raise C.CommandError(f"{k}: line too long or has control characters")
+                    if line:
+                        lines.append(line)
+                if not lines:
+                    continue
+                v = lines
             elif k in ("ps_s", "rt_s"):
                 lo, hi = LIMITS["ps_page_s" if k == "ps_s" else "rt_page_s"]
                 try:
@@ -420,7 +473,7 @@ class Daemon:
         saved = self.names_store.data.get(key)
         try:
             if isinstance(override, dict):          # unsaved edits from the page
-                self.names_store.data[key] = {k: v for k, v in override.items() if k in PIECE_KEYS and v not in (None, "")}
+                self.names_store.data[key] = {k: v for k, v in override.items() if k in PIECE_KEYS and v not in (None, "", [])}
                 if override.get("type") in (SHOW, INTERSTITIAL):
                     typ = override["type"]
                     if typ != SHOW:

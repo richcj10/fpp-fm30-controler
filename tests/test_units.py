@@ -178,5 +178,70 @@ class ShowTests(unittest.TestCase):
         self.assertEqual(f["title"], "MDYK")
 
 
+class CustomLinesTests(unittest.TestCase):
+    """Per-piece custom PS/RT lines (ps_lines / rt_lines)."""
+
+    def setUp(self):
+        import tempfile
+        import fm30d as D
+        self.D = D
+        self.tmp = tempfile.TemporaryDirectory()
+        self.d = D.Daemon(self.tmp.name, port_override="socket://127.0.0.1:1")
+        self.d.show = ShowTests.mk(None, 3, "DHN -BiCOS.wav", self.d.names_store.data)
+        self.d.show.names = self.d.names_store.data
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def lay(self, key="DHN -BiCOS.wav", n=2, typ="show"):
+        return self.d.piece_layout(key, "http://10.0.0.2", n, 4, typ, True, "Mon 5:30 PM")
+
+    def test_auto_lines_prefill(self):
+        lay = self.lay()
+        self.assertEqual(lay["auto_rt"], ["{count} Baby, It's Cold Outside - Drew Holcomb"])
+        self.assertEqual(lay["auto_ps"], ["BABY,", "IT'S", "COLD", "OUTSIDE", "{station}"])
+        self.assertEqual(lay["rt"], ["2/4 Baby, It's Cold Outside - Drew Holcomb"])
+        lay = self.lay("StationID.wav", 0, "interstitial")
+        self.assertFalse(any("{count}" in l for l in lay["auto_rt"]))
+
+    def test_custom_lines_used_with_live_tokens(self):
+        r = self.d.api_piece_put("DHN -BiCOS.wav", {
+            "ps_lines": "BABY,\nIT'S COLD\n\nmerry xmas\n{STATION}",
+            "rt_lines": ["{count} Baby, It's Cold Outside - Drew Holcomb", "{count} Merry Christmas from our house!",
+                         "Next show {next}"]})
+        self.assertEqual(r["names"]["ps_lines"], ["BABY,", "IT'S COLD", "merry xmas", "{STATION}"])
+        lay = self.lay()
+        self.assertEqual([p.strip() for p in lay["ps"]], ["BABY,", "IT'S", "COLD", "MERRY", "XMAS", "105.5 FM"])
+        self.assertEqual(lay["rt"], ["2/4 Baby, It's Cold Outside - Drew Holcomb", "2/4 Merry Christmas from our house!",
+                                     "Next show Mon 5:30 PM"])
+        lay = self.lay(n=3)                          # reordered show: counter follows
+        self.assertTrue(all(p.startswith("3/4") for p in lay["rt"][:2]))
+        self.assertEqual(lay["auto_rt"], ["{count} Baby, It's Cold Outside - Drew Holcomb"])
+
+    def test_long_custom_rt_line_keeps_counter_on_each_page(self):
+        long = "{count} " + " ".join(["Merry Christmas and happy holidays"] * 4)
+        self.d.api_piece_put("DHN -BiCOS.wav", {"rt_lines": [long]})
+        rt = self.lay()["rt"]
+        self.assertGreater(len(rt), 1)
+        self.assertTrue(all(p.startswith("2/4 ") and len(p) <= 64 for p in rt))
+
+    def test_only_rt_custom_keeps_auto_ps_and_validation(self):
+        self.d.api_piece_put("DHN -BiCOS.wav", {"rt_lines": ["Hello"]})
+        lay = self.lay()
+        self.assertEqual(lay["rt"], ["Hello"])
+        self.assertEqual(lay["ps"][-1], "105.5 FM")
+        for bad in (["x" * 201], ["a\tb"], ["l"] * 21):
+            with self.assertRaises(C.CommandError):
+                self.d.api_piece_put("DHN -BiCOS.wav", {"rt_lines": bad})
+        r = self.d.api_piece_put("DHN -BiCOS.wav", {"rt_lines": ["", "  "]})   # all blank -> automatic
+        self.assertNotIn("rt_lines", r["names"])
+        self.assertEqual(self.lay()["rt"], ["2/4 Baby, It's Cold Outside - Drew Holcomb"])
+
+    def test_idle_ignores_custom_lines(self):
+        self.d.api_piece_put("DHN -BiCOS.wav", {"rt_lines": ["Hello"]})
+        lay = self.d.piece_layout(None, "http://10.0.0.2", 0, 0, "show", False, "Mon 5:30 PM")
+        self.assertEqual(lay["rt"], ["Christmas light show - next show Mon 5:30 PM"])
+
+
 if __name__ == "__main__":
     unittest.main()

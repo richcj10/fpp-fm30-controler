@@ -8,6 +8,7 @@ What it does:
 - **Now-playing RDS.**
   - PS shows a short name as 8-character word pages (about 2.5 s each). Long words are split with a hyphen, and the station tag shows between loops.
   - RT shows `x/N Title - Artist | extra`, split at word boundaries into pages of up to 64 characters. The counter starts every page, and pages rotate about every 10 s.
+- **Your own RDS text per piece.** On **Show & RDS**, click a piece and tick **Custom text**. The PS and RT lines are filled in from the names (e.g. `{count} Mary, Did You Know? - Pentatonix`). Edit them, add your own lines (`MERRY` / `XMAS`, `{count} Merry Christmas from our house`) or delete lines; they rotate in order while that piece plays. Tokens stay live, so `{count}` still shows the right x/N after the show changes. Long lines are split automatically. Untick to go back to automatic text.
 - **Flexible show list.** Nothing is hardcoded. The plugin reads the running playlist live, so you can add, remove or reorder pieces, or add whole new playlists. Names belong to the media file and fall back to the song's tags. Each piece is either a *show piece* (counted in x/N) or an *interstitial* (Station ID, intros: not counted). Lead-in and lead-out are never counted.
 - **Everything the ESP did:**
   - frequency, power, volume and balance
