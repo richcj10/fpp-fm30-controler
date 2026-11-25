@@ -36,6 +36,7 @@ class Silent(unittest.TestCase):
             d.link.start()
             threading.Thread(target=d.status_loop, daemon=True).start()
             threading.Thread(target=d.show_loop, daemon=True).start()
+            threading.Thread(target=d.vol_watch, daemon=True).start()
             time.sleep(5.5)
             self.assertFalse(d.link.alive())
             sent = got.decode()

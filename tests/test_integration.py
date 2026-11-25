@@ -49,7 +49,7 @@ class EndToEnd(unittest.TestCase):
         cls.state = {"playing": True}
 
         def fetch(url, timeout=3.0):
-            song = "DHN -BiCOS.wav"
+            song = cls.state.get("song", "DHN -BiCOS.wav")
             st = "playing" if cls.state["playing"] else "idle"
             local = {"mode_name": "remote", "status_name": st, "current_playlist": None, "current_song": song if st == "playing" else ""}
             master = {"mode_name": "player", "status_name": st, "current_song": local["current_song"],
@@ -60,6 +60,7 @@ class EndToEnd(unittest.TestCase):
         d.link.start()
         threading.Thread(target=d.status_loop, daemon=True).start()
         threading.Thread(target=d.show_loop, daemon=True).start()
+        threading.Thread(target=d.vol_watch, daemon=True).start()
         cls.hport = free_port()
         cls.srv = fm30d.ThreadingHTTPServer(("127.0.0.1", cls.hport), fm30d.make_handler(d))
         threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
@@ -150,6 +151,18 @@ class EndToEnd(unittest.TestCase):
         self.assertTrue(wait(lambda: self.fm30().get("vol") == 90), "piece volume not re-applied")
         code, r = self.api("PUT", "/api/piece", {"key": "DHN -BiCOS.wav", "names": {}})
         self.assertTrue(wait(lambda: self.fm30().get("vol") == 100), "default not applied after clearing the piece")
+
+    def test_6_volume_changes_quickly_at_song_change(self):
+        self.assertTrue(wait(lambda: self.fm30().get("tx") == 1))
+        self.api("PUT", "/api/piece", {"key": "MDYK.wav", "names": {"vol": 70}})
+        time.sleep(1.5)                                   # let the slow path settle on the current song
+        t0 = time.time()
+        self.state["song"] = "MDYK.wav"
+        self.assertTrue(wait(lambda: (self.d.fm30 or {}).get("vol") == 70, 3), "song volume not applied")
+        took = time.time() - t0
+        self.assertLess(took, 0.6, f"volume took {took:.2f} s")
+        self.state["song"] = "DHN -BiCOS.wav"
+        self.assertTrue(wait(lambda: (self.d.fm30 or {}).get("vol") == 100, 3))
 
 
 if __name__ == "__main__":

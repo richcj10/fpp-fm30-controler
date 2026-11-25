@@ -27,7 +27,7 @@ import pager as P               # noqa: E402
 from link import Link, LinkError  # noqa: E402
 from show import Show, SHOW, INTERSTITIAL  # noqa: E402
 
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 STATUS_PERIOD_S = 2.0
 SAVE_MIN_GAP_S = 10.0
 PIECE_KEYS = {"title", "artist", "short", "extra", "type", "ps_s", "rt_s", "ps_template", "rt_template",
@@ -113,6 +113,7 @@ class Daemon:
         self.tx_state = "unknown"
         self.tx_tried = 0.0
         self.vol_key = _REAPPLY          # piece whose volume was last applied
+        self.vol_lock = threading.Lock()
         self.last_save = 0.0
         self.show = Show(self.s, self.names_store.data, log=self.log)
         self.link = Link(self.s["port"], log=self.log)
@@ -232,6 +233,36 @@ class Daemon:
         return int(v) if isinstance(v, (int, float)) else None
 
     def _vol_auto(self, now):
+        """Slow path (1 s show poll): covers idle, errors and anything the
+        fast watcher missed."""
+        if now.get("error") and not now.get("playing"):
+            return
+        self._vol_for(now.get("key") if now.get("playing") else None)
+
+    def vol_watch(self):
+        """Fast path: watch this FPP's own status (cheap, local) so the volume
+        changes within ~0.1 s of the next song starting instead of up to 1 s.
+        Polls every 0.5 s, and every 0.1 s in the last 3 s of a song."""
+        last = None
+        while True:
+            delay = 0.5
+            try:
+                st = self.show.fetch(self.show.local() + "/api/fppd/status", timeout=1.0)
+                if st.get("status_name") == "playing":
+                    key = st.get("current_song") or st.get("current_sequence") or None
+                    if key and key != last:
+                        last = key
+                        self._vol_for(key)
+                    rem = st.get("seconds_remaining")
+                    if rem is not None and str(rem).isdigit() and int(rem) <= 3:
+                        delay = 0.1
+                else:
+                    last = None
+            except Exception:
+                delay = 1.0
+            time.sleep(delay)
+
+    def _vol_for(self, key):
         """VOL follows the piece: its own volume, else the default.
 
         Nothing is sent until a piece has its own volume or a default is set,
@@ -241,32 +272,30 @@ class Daemon:
         """
         if not self.link.alive():
             return
-        key = now.get("key") if now.get("playing") else None
-        if now.get("error") and not now.get("playing"):
-            return
-        if key == self.vol_key:
-            return
-        want = self.piece_vol(key)
-        base = int(self.s.get("vol_default", -1))
-        cur = (self.fm30 or {}).get("vol")
-        if want is not None and base < 0:
-            if cur is None:
-                return                          # wait for the first STATUS
-            with self.lock:
-                self.s["vol_default"] = base = int(cur)
-                self.settings_store.save()
-            self.log(f"volume: default set to the transmitter's current {base}")
-        if want is None:
-            want = base if base >= 0 else None
-        if want is None or want == cur:
-            self.vol_key = key
-            return
-        r = self.send(f"VOL {want}")
-        if r[0] == "ok":
-            self.log(f"volume {want} for {key or 'idle'}")
-            self.vol_key = key
-            if self.fm30 is not None:
-                self.fm30["vol"] = want
+        with self.vol_lock:
+            if key == self.vol_key:
+                return
+            want = self.piece_vol(key)
+            base = int(self.s.get("vol_default", -1))
+            cur = (self.fm30 or {}).get("vol")
+            if want is not None and base < 0:
+                if cur is None:
+                    return                          # wait for the first STATUS
+                with self.lock:
+                    self.s["vol_default"] = base = int(cur)
+                    self.settings_store.save()
+                self.log(f"volume: default set to the transmitter's current {base}")
+            if want is None:
+                want = base if base >= 0 else None
+            if want is None or want == cur:
+                self.vol_key = key
+                return
+            r = self.send(f"VOL {want}")
+            if r[0] == "ok":
+                self.log(f"volume {want} for {key or 'idle'}")
+                self.vol_key = key
+                if self.fm30 is not None:
+                    self.fm30["vol"] = want
 
     # ------------------------------------------------------------ RDS layout
     def piece_layout(self, key, host, n, N, typ, playing=True, nxt=""):
@@ -638,6 +667,7 @@ def main():
     d.link.start()
     threading.Thread(target=d.status_loop, daemon=True).start()
     threading.Thread(target=d.show_loop, daemon=True).start()
+    threading.Thread(target=d.vol_watch, daemon=True).start()
     srv = ThreadingHTTPServer(("127.0.0.1", int(d.s["http_port"])), make_handler(d))
     srv.daemon_threads = True
     srv.serve_forever()
