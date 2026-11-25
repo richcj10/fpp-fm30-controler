@@ -27,11 +27,12 @@ import pager as P               # noqa: E402
 from link import Link, LinkError  # noqa: E402
 from show import Show, SHOW, INTERSTITIAL  # noqa: E402
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 STATUS_PERIOD_S = 2.0
 SAVE_MIN_GAP_S = 10.0
 PIECE_KEYS = {"title", "artist", "short", "extra", "type", "ps_s", "rt_s", "ps_template", "rt_template",
-              "ps_lines", "rt_lines"}
+              "ps_lines", "rt_lines", "vol"}
+_REAPPLY = object()                     # forces the volume to be re-evaluated
 LINE_KEYS = ("ps_lines", "rt_lines")   # custom RDS text: list of lines, tokens allowed
 MAX_LINES = 20
 
@@ -55,12 +56,13 @@ DEFAULTS = {
     "idle_ps": "{station}",
     "idle_rt": "Christmas light show - next show {next}",
     "lcd_slot1": True,                # slot 1 shows the show state
+    "vol_default": -1,                # VOL between songs and for songs without their own; -1 = not set
     "lcd_msgs": {"2": ["", ""], "3": ["", ""], "4": ["", ""]},
 }
 
 LIMITS = {
     "tx_off_grace_s": (0, 3600), "ps_page_s": (1.0, 30.0), "rt_page_s": (4.0, 120.0),
-    "http_port": (1024, 65535),
+    "http_port": (1024, 65535), "vol_default": (-1, 255),
 }
 
 
@@ -110,6 +112,7 @@ class Daemon:
         self.idle_since = None
         self.tx_state = "unknown"
         self.tx_tried = 0.0
+        self.vol_key = _REAPPLY          # piece whose volume was last applied
         self.last_save = 0.0
         self.show = Show(self.s, self.names_store.data, log=self.log)
         self.link = Link(self.s["port"], log=self.log)
@@ -154,6 +157,7 @@ class Daemon:
             if self.s.get("tx_auto") and self.was_playing and self.tx_state == "on":
                 self.tx_state = "error"          # STM32 came back with its SAVEd TX state: re-assert
                 self.tx_tried = 0.0
+            self.vol_key = _REAPPLY              # ... and its SAVEd volume
         for slot, (top, bottom) in sorted(msgs.items()):
             if not (top or bottom):
                 continue                 # a reset STM32 starts with empty slots
@@ -184,6 +188,7 @@ class Daemon:
                     with self.lock:
                         self.now = now
                     self._tx_auto(now)
+                    self._vol_auto(now)
                     self._relayout(now)
                     self._lcd1(now)
                 self._pager_tick()
@@ -220,6 +225,48 @@ class Daemon:
                     r = self.send("TX OFF")
                     self.tx_state = "off" if r[0] == "ok" else "error"
         self.was_playing = playing
+
+    # ------------------------------------------------------------ volume per piece
+    def piece_vol(self, key):
+        v = (self.names_store.data.get(key) or {}).get("vol") if key else None
+        return int(v) if isinstance(v, (int, float)) else None
+
+    def _vol_auto(self, now):
+        """VOL follows the piece: its own volume, else the default.
+
+        Nothing is sent until a piece has its own volume or a default is set,
+        so the transmitter's volume is left alone unless this is used. The
+        first time a piece has its own volume and no default is set, the
+        transmitter's current volume becomes the default (shown in Settings).
+        """
+        if not self.link.alive():
+            return
+        key = now.get("key") if now.get("playing") else None
+        if now.get("error") and not now.get("playing"):
+            return
+        if key == self.vol_key:
+            return
+        want = self.piece_vol(key)
+        base = int(self.s.get("vol_default", -1))
+        cur = (self.fm30 or {}).get("vol")
+        if want is not None and base < 0:
+            if cur is None:
+                return                          # wait for the first STATUS
+            with self.lock:
+                self.s["vol_default"] = base = int(cur)
+                self.settings_store.save()
+            self.log(f"volume: default set to the transmitter's current {base}")
+        if want is None:
+            want = base if base >= 0 else None
+        if want is None or want == cur:
+            self.vol_key = key
+            return
+        r = self.send(f"VOL {want}")
+        if r[0] == "ok":
+            self.log(f"volume {want} for {key or 'idle'}")
+            self.vol_key = key
+            if self.fm30 is not None:
+                self.fm30["vol"] = want
 
     # ------------------------------------------------------------ RDS layout
     def piece_layout(self, key, host, n, N, typ, playing=True, nxt=""):
@@ -347,6 +394,12 @@ class Daemon:
             r = self.send(line, retry=False)
         else:
             r = self.send(line)
+        if w == "VOL" and r[0] == "ok":
+            key = self.now.get("key") if self.now.get("playing") else None
+            if self.piece_vol(key) is None:
+                with self.lock:
+                    self.s["vol_default"] = int(line.split()[1])
+                    self.settings_store.save()
         if w == "TX" and r[0] == "ok":
             self.tx_state = "on" if line.endswith("ON") else "off"
         if w == "LCD" and line.startswith("LCD MSG ") and r[0] == "ok":
@@ -401,6 +454,7 @@ class Daemon:
                 self.s[k] = v
             self.settings_store.save()
             self.layout = {"key": None, "ps": [], "rt": []}    # force relayout
+            self.vol_key = _REAPPLY
         return {"ok": True, "settings": self.s, "restart_needed": any(k in d for k in ("port", "http_port"))}
 
     def api_piece_put(self, key, d):
@@ -432,6 +486,13 @@ class Daemon:
                 if not lines:
                     continue
                 v = lines
+            elif k == "vol":
+                try:
+                    v = int(v)
+                except (TypeError, ValueError):
+                    raise C.CommandError("vol must be a number")
+                if not 0 <= v <= 255:
+                    raise C.CommandError("vol 0..255")
             elif k in ("ps_s", "rt_s"):
                 lo, hi = LIMITS["ps_page_s" if k == "ps_s" else "rt_page_s"]
                 try:
@@ -452,6 +513,7 @@ class Daemon:
                 self.names_store.data.pop(key, None)
             self.names_store.save()
             self.layout = {"key": None, "ps": [], "rt": []}
+            self.vol_key = _REAPPLY
         return {"ok": True, "key": key, "names": clean}
 
     def api_preview(self, d):

@@ -105,6 +105,11 @@
       <div class="help">Tokens: {count} {n} {N} {title} {artist} {short} {extra} {station} {next}. Leave empty to use the Settings templates.</div>
       <div class="row"><label>PS page time (s)</label><input type="number" id="e-ps_s" step="0.5" min="1" max="30" style="width:80px" placeholder="global">
         <label style="min-width:0">RT page time (s)</label><input type="number" id="e-rt_s" step="1" min="4" max="120" style="width:80px" placeholder="global"></div>
+      <div class="row"><label>Volume (0-255)</label><input type="number" id="e-vol" min="0" max="255" step="1" style="width:80px" placeholder="default">
+        <input type="range" id="e-volr" min="0" max="255" oninput="$('e-vol').value=this.value;$('e-vol').dispatchEvent(new Event('input'))">
+        <button class="buttons" onclick="FM.volTry()">Try now</button><span id="e-volnote" class="kv"></span></div>
+      <div class="help">Transmitter volume (VOL) while this piece plays. Empty = the default volume (Settings). Applied as the piece starts;
+        <b>Try now</b> sends it straight away so you can listen. Watch the overmodulation count on the Status tab when raising it.</div>
       <h4 style="margin:12px 0 4px">RDS text</h4>
       <div class="row"><label>Custom text</label><input type="checkbox" id="e-custom" onchange="FM.customToggle()">
         <span class="kv">off = built from the names and templates above (shown greyed). On = these lines are sent exactly as written.</span></div>
@@ -226,6 +231,7 @@
     ['master','text','Show master','auto = the MultiSync player, local = this FPP, or an IP address.'],
     ['tx_auto','bool','TX on/off with the show','TX ON when the show starts; TX OFF after it has stopped for the grace time.'],
     ['tx_off_grace_s','num','TX off grace (s)','Covers the gap between playlist loops.'],
+    ['vol_default','num','Default volume','0-255: VOL between songs and for songs without their own volume. -1 = not set (the transmitter volume is left alone; the first song given its own volume sets this to the current volume). Setting the volume on the Status tab while such a song plays updates it too.'],
     ['lcd_slot1','bool','LCD slot 1 shows show state',''],
     ['http_port','num','Service API port','Local only (127.0.0.1).'],
   ];
@@ -363,13 +369,26 @@
     $('piecerows').innerHTML = d.pieces.map((p, i) => {
       const typ = p.type === 'show' ? '<span class="badge show">show</span>' : '<span class="badge inter">interstitial</span>';
       const need = (p.effective.needs_name ? ' <span class="badge need">needs name</span>' : '') +
-        (p.names.ps_lines || p.names.rt_lines ? ' <span class="badge show">custom RDS</span>' : '');
+        (p.names.ps_lines || p.names.rt_lines ? ' <span class="badge show">custom RDS</span>' : '') +
+        (p.names.vol != null ? ' <span class="badge">vol ' + p.names.vol + '</span>' : '');
       return '<tr class="piece' + (SEL === p.key ? ' sel' : '') + '" onclick="FM.edit(' + i + ')"><td class="mono">' + esc(p.key) + need +
         '</td><td>' + typ + (p.type_auto ? ' <span class="kv">auto</span>' : '') + '</td><td>' + esc(p.effective.title) +
         '</td><td>' + esc(p.effective.artist) + '</td><td>' + esc(p.playlists.join(', ')) + '</td></tr>';
     }).join('') || '<tr><td colspan="5">No playlists found on the show master.</td></tr>';
   };
-  const FIELDS = ['type', 'title', 'artist', 'short', 'extra', 'ps_template', 'rt_template', 'ps_s', 'rt_s'];
+  const FIELDS = ['type', 'title', 'artist', 'short', 'extra', 'ps_template', 'rt_template', 'ps_s', 'rt_s', 'vol'];
+  const NUMS = ['ps_s', 'rt_s', 'vol'];
+  function volNote() {
+    const dv = SET && SET.vol_default >= 0 ? SET.vol_default : null;
+    const v = val('e-vol');
+    $('e-volr').value = v !== '' ? v : (dv != null ? dv : 128);
+    txt('e-volnote', v !== '' ? '' : (dv != null ? 'default = ' + dv : 'default not set: the transmitter volume is left as is'));
+  }
+  FM.volTry = function () {
+    const v = val('e-vol') !== '' ? val('e-vol') : (SET && SET.vol_default >= 0 ? SET.vol_default : '');
+    if (v === '') { toast('No volume set for this piece', false); return; }
+    FM.cmd('VOL ' + v);
+  };
   const LINES = ['ps_lines', 'rt_lines'];
   let AUTO = {ps: [], rt: []};
   function linesOf(id) { return $(id).value.split('\n').map(l => l.trim()).filter(l => l); }
@@ -403,6 +422,7 @@
     AUTO = {ps: [], rt: []};
     LINES.forEach(k => { $('e-' + k).value = (p.names[k] || []).join('\n'); });
     setCustom(custom);
+    volNote();
     txt('e-ttag', p.tags.title ? 'tag: ' + p.tags.title : 'no tag');
     txt('e-atag', p.tags.artist ? 'tag: ' + p.tags.artist : '');
     txt('e-typeauto', p.type_auto ? 'auto = ' + p.type : '');
@@ -413,7 +433,7 @@
   };
   function editorNames() {
     const o = {};
-    FIELDS.forEach(k => { const v = val('e-' + k); if (v !== '') o[k] = (k === 'ps_s' || k === 'rt_s') ? Number(v) : v; });
+    FIELDS.forEach(k => { const v = val('e-' + k); if (v !== '') o[k] = NUMS.includes(k) ? Number(v) : v; });
     if ($('e-custom').checked) LINES.forEach(k => { const l = linesOf('e-' + k); if (l.length) o[k] = l; });
     return o;
   }
@@ -452,6 +472,7 @@
   $('r-pty').innerHTML = PTY.map((n, i) => '<option value="' + i + '">' + i + ' ' + esc(n) + '</option>').join('');
   $('r-flags').innerHTML = ['TP', 'TA', 'MS', 'STEREO'].map(f => '<span style="margin-right:10px">' + f +
     ' <button class="buttons" onclick="FM.cmd(\'' + f + ' 1\')">1</button><button class="buttons" onclick="FM.cmd(\'' + f + ' 0\')">0</button></span>').join('');
+  $('e-vol').addEventListener('input', volNote);
   document.querySelectorAll('#editor input, #editor select, #editor textarea').forEach(el => el.addEventListener('input', () => {
     clearTimeout(pvTimer); pvTimer = setTimeout(FM.preview, 300);
   }));

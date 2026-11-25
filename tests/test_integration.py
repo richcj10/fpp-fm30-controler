@@ -131,6 +131,26 @@ class EndToEnd(unittest.TestCase):
         self.assertTrue(wait(lambda: self.fm30().get("tx") == 0), "TX not switched off after the grace time")
         self.state["playing"] = True
 
+    def test_5_volume_per_piece(self):
+        self.assertTrue(wait(lambda: self.fm30().get("tx") == 1))
+        start = self.fm30().get("vol")
+        self.assertEqual(self.d.s["vol_default"], -1)            # unused: volume left alone
+        code, r = self.api("PUT", "/api/piece", {"key": "DHN -BiCOS.wav", "names": {"vol": 300}})
+        self.assertEqual(code, 400)
+        code, r = self.api("PUT", "/api/piece", {"key": "DHN -BiCOS.wav", "names": {"vol": 90}})
+        self.assertTrue(r["ok"], r)
+        self.assertTrue(wait(lambda: self.fm30().get("vol") == 90), f"piece volume not applied: {self.fm30().get('vol')}")
+        self.assertEqual(self.d.s["vol_default"], start)         # captured from the transmitter
+        self.state["playing"] = False                             # between shows: back to the default
+        self.assertTrue(wait(lambda: self.fm30().get("vol") == start), "default volume not restored")
+        code, r = self.api("POST", "/api/cmd", {"cmd": "VOL 100"})  # manual change while idle = new default
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(self.d.s["vol_default"], 100)
+        self.state["playing"] = True
+        self.assertTrue(wait(lambda: self.fm30().get("vol") == 90), "piece volume not re-applied")
+        code, r = self.api("PUT", "/api/piece", {"key": "DHN -BiCOS.wav", "names": {}})
+        self.assertTrue(wait(lambda: self.fm30().get("vol") == 100), "default not applied after clearing the piece")
+
 
 if __name__ == "__main__":
     unittest.main()
