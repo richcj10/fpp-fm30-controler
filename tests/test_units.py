@@ -237,6 +237,17 @@ class CustomLinesTests(unittest.TestCase):
         self.assertNotIn("rt_lines", r["names"])
         self.assertEqual(self.lay()["rt"], ["2/4 Baby, It's Cold Outside - Drew Holcomb"])
 
+    def test_overmod_counted_per_piece(self):
+        d = self.d
+        d.now = {"playing": True, "key": "MDYK.wav"}
+        for ov in (5, 5, 8, 9):
+            d._on_json('{"ovm": %d, "uptime": 10}' % ov)
+        d.now = {"playing": True, "key": "TSO-WiW.wav"}
+        d._on_json('{"ovm": 2, "uptime": 11}')          # STM32 restarted: counter from 0
+        st = d.api_status()["ovm"]
+        self.assertEqual((st["total"], st["last_min"], st["piece"]), (2, 6, 2))
+        self.assertEqual(st["by_piece"], {"MDYK.wav": 4, "TSO-WiW.wav": 2})
+
     def test_idle_ignores_custom_lines(self):
         self.d.api_piece_put("DHN -BiCOS.wav", {"rt_lines": ["Hello"]})
         lay = self.d.piece_layout(None, "http://10.0.0.2", 0, 0, "show", False, "Mon 5:30 PM")

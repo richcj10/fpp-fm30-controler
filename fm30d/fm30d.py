@@ -27,7 +27,7 @@ import pager as P               # noqa: E402
 from link import Link, LinkError  # noqa: E402
 from show import Show, SHOW, INTERSTITIAL  # noqa: E402
 
-VERSION = "0.3.1"
+VERSION = "0.3.2"
 STATUS_PERIOD_S = 2.0
 SAVE_MIN_GAP_S = 10.0
 PIECE_KEYS = {"title", "artist", "short", "extra", "type", "ps_s", "rt_s", "ps_template", "rt_template",
@@ -114,6 +114,9 @@ class Daemon:
         self.tx_tried = 0.0
         self.vol_key = _REAPPLY          # piece whose volume was last applied
         self.vol_lock = threading.Lock()
+        self.ovm_last = None             # last STM32 overmodulation counter
+        self.ovm_hist = collections.deque()   # (time, new events)
+        self.ovm_piece = {}              # piece key -> overmods while it played (since service start)
         self.last_save = 0.0
         self.show = Show(self.s, self.names_store.data, log=self.log)
         self.link = Link(self.s["port"], log=self.log)
@@ -145,6 +148,18 @@ class Daemon:
                 self.log("STM32 uptime went backwards: reset")
                 threading.Thread(target=self._on_reset, daemon=True).start()
             self.last_uptime = up
+            ov = d.get("ovm")
+            if isinstance(ov, int):
+                if self.ovm_last is not None:
+                    new = ov - self.ovm_last if ov >= self.ovm_last else ov    # counter restarts with the STM32
+                    if new > 0:
+                        self.ovm_hist.append((time.time(), new))
+                        key = self.now.get("key") if self.now.get("playing") else None
+                        if key:
+                            self.ovm_piece[key] = self.ovm_piece.get(key, 0) + new
+                self.ovm_last = ov
+            while self.ovm_hist and time.time() - self.ovm_hist[0][0] > 60:
+                self.ovm_hist.popleft()
             self.fm30 = d
             self.fm30_at = time.time()
 
@@ -452,6 +467,9 @@ class Daemon:
                          "last_rx_age": round(time.time() - self.link.last_rx, 1) if self.link.last_rx else None},
                 "fm30": self.fm30, "fm30_age": round(time.time() - self.fm30_at, 1) if self.fm30_at else None,
                 "show": self.now, "tx_auto_state": self.tx_state,
+                "ovm": {"total": self.ovm_last, "last_min": sum(n for _, n in self.ovm_hist),
+                        "piece": self.ovm_piece.get(self.now.get("key"), 0) if self.now.get("playing") else None,
+                        "by_piece": dict(self.ovm_piece)},
                 "idle_off_in": (max(0, round(float(self.s.get("tx_off_grace_s", 60)) - (time.monotonic() - self.idle_since)))
                                 if self.idle_since else None),
                 "rds": {"auto": self.s.get("rds_auto"), "ps_pages": lay.get("ps", []), "rt_pages": lay.get("rt", []),

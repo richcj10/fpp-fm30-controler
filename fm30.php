@@ -109,7 +109,7 @@
         <input type="range" id="e-volr" min="0" max="255" oninput="$('e-vol').value=this.value;$('e-vol').dispatchEvent(new Event('input'))">
         <button class="buttons" onclick="FM.volTry()">Try now</button><span id="e-volnote" class="kv"></span></div>
       <div class="help">Transmitter volume (VOL) while this piece plays. Empty = the default volume (Settings). Applied as the piece starts;
-        <b>Try now</b> sends it straight away so you can listen. Watch the overmodulation count on the Status tab when raising it.</div>
+        <b>Try now</b> sends it straight away so you can listen. Overmodulation while it played: <b id="e-ovm">-</b> (since the service started; also on the Status tab).</div>
       <h4 style="margin:12px 0 4px">RDS text</h4>
       <div class="row"><label>Custom text</label><input type="checkbox" id="e-custom" onchange="FM.customToggle()">
         <span class="kv">off = built from the names and templates above (shown greyed). On = these lines are sent exactly as written.</span></div>
@@ -293,11 +293,14 @@
     else if (f.tx) { b.className = 'on'; b.textContent = '● ON AIR ' + f.freq; }
     else { b.className = ''; b.textContent = 'TX OFF'; }
     document.title = f.tx ? '● ON AIR ' + f.freq : 'FM30';
-    $('linkline').textContent = (d.link.connected ? 'Link OK ' : 'Link DOWN ') + d.link.port +
+    const om = d.ovm && d.ovm.total != null ? (d.ovm.last_min ? '⚠ ' : '') + 'overmod ' + d.ovm.last_min + '/min' +
+      (d.ovm.piece != null ? ', ' + d.ovm.piece + ' this song' : '') + ', ' + d.ovm.total + ' total' : '';
+    $('linkline').textContent = (om ? om + ' · ' : '') + (d.link.connected ? 'Link OK ' : 'Link DOWN ') + d.link.port +
       (d.fm30_age != null ? ' · status ' + d.fm30_age + ' s ago' : '') + ' · fm30d ' + d.version;
     const cnt = s.n ? s.n + '/' + s.N : (s.type === 'interstitial' ? 'interstitial' : (s.section === 'leadIn' ? 'lead-in' : '-'));
     $('nowgrid').innerHTML = kv('Show', s.playing ? 'playing' : 'idle') + kv('Playlist', s.playlist || '-') +
       kv('Piece', s.key || '-') + kv('Position', cnt) + kv('Next show', s.next || '-') +
+      kv('Volume', f.vol != null ? String(f.vol) : '-') + kv('Overmodulation', om ? om.replace('overmod ', '') : '-') +
       kv('TX automation', SET && SET.tx_auto === false ? 'off' : d.tx_auto_state + (d.idle_off_in != null ? ' (off in ' + d.idle_off_in + ' s)' : '')) +
       (s.error ? kv('FPP', s.error) : '');
     $('pspages').innerHTML = r.auto ? pages(r.ps_pages, r.ps_now) + ' <span class="kv">' + (r.ps_s || '') + ' s each</span>' : '<span class="kv">automation off</span>';
@@ -308,6 +311,8 @@
       kv('Pilot lock', f.pilot_lock ? 'yes' : 'no') + kv('RDS', f.rds ? 'on' : 'muted') +
       kv('PS on air', f.ps != null ? '[' + f.ps + ']' : '-') + kv('RT on air', f.rt || '-') +
       kv('Volume / balance', f.vol != null ? f.vol + ' / ' + f.bal : '-') +
+      kv('Overmodulation', d.ovm && d.ovm.total != null ? (d.ovm.last_min ? '⚠ ' : '') +
+        d.ovm.last_min + ' in the last minute · ' + (d.ovm.piece != null ? d.ovm.piece + ' this song · ' : '') + d.ovm.total + ' total' : '-') +
       kv('Faults', (f.fault ? f.fault + ' ' : '') + '(' + (f.faults || 0) + ' total)') +
       kv('PI / PTY', f.pi != null ? f.pi + ' / ' + (PTY[f.pty] || f.pty) : '-') + kv('Uptime', f.uptime != null ? f.uptime + ' s' : '-');
     $('rawstatus').textContent = JSON.stringify(f, null, 1);
@@ -423,6 +428,7 @@
     LINES.forEach(k => { $('e-' + k).value = (p.names[k] || []).join('\n'); });
     setCustom(custom);
     volNote();
+    txt('e-ovm', ST && ST.ovm && ST.ovm.by_piece ? String(ST.ovm.by_piece[p.key] || 0) : '-');
     txt('e-ttag', p.tags.title ? 'tag: ' + p.tags.title : 'no tag');
     txt('e-atag', p.tags.artist ? 'tag: ' + p.tags.artist : '');
     txt('e-typeauto', p.type_auto ? 'auto = ' + p.type : '');
