@@ -189,6 +189,7 @@ class CustomLinesTests(unittest.TestCase):
         self.d = D.Daemon(self.tmp.name, port_override="socket://127.0.0.1:1")
         self.d.show = ShowTests.mk(None, 3, "DHN -BiCOS.wav", self.d.names_store.data)
         self.d.show.names = self.d.names_store.data
+        self.d.s["car_mode"] = False
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -267,6 +268,30 @@ class CustomLinesTests(unittest.TestCase):
         import fm30d as D
         again = D.Store(os.path.join(self.tmp.name, "fpp-fm30-plays.json"), {})
         self.assertEqual(again.data["TSO-WiW.wav"]["ovm"], 0)   # survives a restart
+
+    def test_car_mode_fixed_ps_single_rt(self):
+        d = self.d
+        d.s["car_mode"] = True
+        lay = self.lay()
+        self.assertEqual(lay["ps"], ["105.5 FM"])                  # station name only, never pages
+        self.assertEqual(lay["rt"], ["2/4 Baby, It's Cold Outside - Drew Holcomb"])
+        self.assertEqual((lay["ps_s"], lay["rt_s"]), (4.0, 20.0))
+        self.assertEqual(lay["auto_ps"], ["{station}"])
+        # too long for one page: extra goes first, then artist, then the title is shortened
+        d.api_piece_put("DHN -BiCOS.wav", {"extra": "Merry Christmas from all of us!",
+                                           "artist": "Drew Holcomb & The Neighbors"})
+        rt = self.lay()["rt"]
+        self.assertEqual(rt, ["2/4 Baby, It's Cold Outside - Drew Holcomb & The Neighbors"])
+        d.api_piece_put("DHN -BiCOS.wav", {"title": "Baby It's Cold Outside (the extended very long holiday remix version)",
+                                           "artist": "Drew Holcomb"})
+        rt = self.lay()["rt"]
+        self.assertEqual(len(rt), 1)
+        self.assertTrue(rt[0].startswith("2/4 Baby It's Cold") and rt[0].endswith("...") and len(rt[0]) <= 64, rt)
+        # custom lines still rotate, but no faster than every 20 s
+        d.api_piece_put("DHN -BiCOS.wav", {"rt_lines": ["{count} Hello", "{count} Merry Christmas"], "rt_s": 5})
+        lay = self.lay()
+        self.assertEqual(lay["rt"], ["2/4 Hello", "2/4 Merry Christmas"])
+        self.assertEqual(lay["rt_s"], 20.0)
 
     def test_idle_ignores_custom_lines(self):
         self.d.api_piece_put("DHN -BiCOS.wav", {"rt_lines": ["Hello"]})

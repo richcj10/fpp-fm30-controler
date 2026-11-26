@@ -105,3 +105,29 @@ def rt_pages(template, fields, counter_every_page=True):
         return [prefix + p for p in wrap(body, width)]
     full = sanitize(render(t, fields), 10000)
     return wrap(full, RT_LEN) or [""]
+
+
+def fit_rt_fields(template, fields):
+    """Fields that make the template render as ONE RT page (<= 64 chars):
+    drop {extra}, then {artist}, then shorten {title} at a word boundary."""
+    def length(f):
+        return len(sanitize(render(template, f), 10000))
+    f = dict(fields)
+    if length(f) <= RT_LEN:
+        return f
+    for k in ("extra", "artist"):
+        if f.get(k):
+            f[k] = ""
+            if length(f) <= RT_LEN:
+                return f
+    title = str(f.get("title") or "")
+    words = title.split(" ")
+    while len(words) > 1:
+        words.pop()
+        f["title"] = " ".join(words).rstrip(",;:-") + "..."
+        if length(f) <= RT_LEN:
+            return f
+    f["title"] = title
+    while f["title"] and length(f) > RT_LEN:
+        f["title"] = f["title"][:-4] + "..." if len(f["title"]) > 4 else ""
+    return f

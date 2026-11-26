@@ -33,6 +33,56 @@
 #fm30 .badge.ovm { background:#e74c3c; color:#fff; font-weight:bold; }
 #fm30 .badge.clean { background:#cfe8d5; }
 #fm30 .badge.recheck { background:#f1e3c6; }
+/* generic radio LCD */
+#fm30 .radio { background:#20242a; border-radius:14px; padding:10px; max-width:560px; box-shadow:0 2px 6px rgba(0,0,0,.35); }
+#fm30 .radio .lcd { background:linear-gradient(#b5cf9f,#98b585); border-radius:6px; padding:8px 12px 10px; color:#1c2a14;
+  font-family:Consolas,"Courier New",monospace; box-shadow:inset 0 0 0 2px #6f8a5f, inset 0 3px 8px rgba(0,0,0,.25); }
+#fm30 .radio .top { display:flex; justify-content:space-between; align-items:center; font-size:.78rem; font-weight:bold; letter-spacing:.06em; }
+#fm30 .radio .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:rgba(28,42,20,.25); margin-right:5px; }
+#fm30 .radio .dot.on { background:#a01818; }
+#fm30 .radio .zone { position:relative; border-radius:5px; padding:3px 4px 3px 24px; margin-top:6px; outline:2px dashed transparent; transition:outline-color .15s, background .15s; }
+#fm30 .radio .zone.hl { outline-color:#1d4e89; background:rgba(29,78,137,.12); }
+#fm30 .radio .zone > .mk { position:absolute; left:2px; top:50%; transform:translateY(-50%); }
+#fm30 .radio .ps { display:flex; gap:3px; }
+#fm30 .radio .ps .c { width:1.35em; height:1.9em; line-height:1.9em; text-align:center; font-size:1.45rem; font-weight:bold;
+  background:rgba(28,42,20,.07); border-radius:2px; }
+#fm30 .radio .rt { font-size:.95rem; min-height:2.6em; line-height:1.3em; white-space:pre-wrap; word-break:break-word; transition:opacity .25s; }
+#fm30 .radio .rt.blank { opacity:0; }
+#fm30 .radio .lbl { font-size:.62rem; letter-spacing:.1em; opacity:.6; }
+#fm30 .mk { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%;
+  background:#1d4e89; color:#fff; font-size:.7rem; font-weight:bold; font-family:sans-serif; flex:none; }
+#fm30 .arrow { color:#1d4e89; font-weight:bold; font-size:.8rem; margin-left:6px; white-space:nowrap; }
+#fm30 .field.hl textarea.lines, #fm30 textarea.lines:focus { border-color:#1d4e89; box-shadow:0 0 0 2px rgba(29,78,137,.3); outline:none; }
+/* switches */
+#fm30 .sw { position:relative; display:inline-block; width:42px; height:22px; flex:none; }
+#fm30 .sw input { opacity:0; width:0; height:0; }
+#fm30 .sw span { position:absolute; inset:0; background:#9aa3ab; border-radius:22px; cursor:pointer; transition:.2s; }
+#fm30 .sw span:before { content:""; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
+#fm30 .sw input:checked + span { background:#1d4e89; }
+#fm30 .sw input:checked + span:before { transform:translateX(20px); }
+#fm30 .opt { display:flex; gap:12px; align-items:flex-start; padding:10px 0; border-bottom:1px solid rgba(128,128,128,.2); }
+#fm30 .opt:last-child { border-bottom:none; }
+#fm30 .opt .t { font-weight:600; }
+#fm30 .opt .d { font-size:.82rem; color:var(--mute); margin-top:2px; }
+#fm30 .opt .ctl { margin-left:auto; display:flex; gap:6px; align-items:center; flex-wrap:nowrap; }
+#fm30 .warn { color:#b85c00; font-weight:600; }
+#fm30 .sect { margin:16px 0 6px; font-size:.95rem; font-weight:700; border-bottom:2px solid rgba(29,78,137,.35); padding-bottom:3px; }
+#fm30 .ed2 { display:grid; grid-template-columns:minmax(300px,400px) 1fr; gap:16px; }
+@media (max-width:760px) { #fm30 .ed2 { grid-template-columns:1fr; } }
+#fm30 .field .t { font-weight:600; font-size:.9rem; }
+#fm30 .field .d { font-size:.78rem; color:var(--mute); margin-bottom:4px; }
+#fm30 textarea.lines { width:100%; box-sizing:border-box; font-family:Consolas,monospace; font-size:.95rem; line-height:1.45; padding:6px 8px; border-radius:6px; border:1px solid #aab; resize:vertical; }
+#fm30 textarea.lines[readonly] { background:rgba(128,128,128,.12); color:var(--mute); }
+#fm30 .lc { font-size:.75rem; font-family:Consolas,monospace; margin-top:3px; }
+#fm30 .lc div { display:flex; gap:8px; }
+#fm30 .lc .n { color:var(--mute); width:1.6em; text-align:right; }
+#fm30 .lc .ok { color:var(--ok); }
+#fm30 .lc .long { color:#b85c00; }
+#fm30 .tok { font-size:.75rem; padding:1px 8px; border-radius:10px; border:1px solid #8aa; background:transparent; color:inherit; cursor:pointer; margin:2px; }
+#fm30 .tok:hover { background:rgba(29,78,137,.15); }
+#fm30 details.adv { margin-top:10px; }
+#fm30 details.adv summary { cursor:pointer; color:#1d4e89; font-weight:600; }
+#fm30 .callout { border-left:4px solid #1d4e89; background:rgba(29,78,137,.07); padding:8px 12px; border-radius:4px; font-size:.85rem; margin:6px 0 10px; }
 #fm30 #msg { position:fixed; right:16px; bottom:16px; padding:8px 14px; border-radius:6px; color:#fff; display:none; z-index:1000; max-width:60vw; }
 #fm30 pre { max-height:340px; overflow:auto; font-size:.8rem; background:rgba(128,128,128,.12); padding:8px; border-radius:6px; }
 #fm30 .lock { color:var(--warn); }
@@ -51,7 +101,7 @@
   <div class="tabs">
     <button data-t="status" class="active">Status</button>
     <button data-t="show">Show &amp; RDS</button>
-    <button data-t="rds">RDS fields</button>
+    <button data-t="rds">Station &amp; RDS</button>
     <button data-t="display">Display</button>
     <button data-t="adv">Advanced</button>
     <button data-t="settings">Settings</button>
@@ -60,9 +110,12 @@
   <!-- ============================== STATUS -->
   <div class="tab active" id="t-status">
     <div class="card"><h3>Now</h3>
-      <div class="grid" id="nowgrid"></div>
-      <div style="margin-top:8px"><span class="kv">PS pages:</span> <span id="pspages"></span></div>
-      <div><span class="kv">RT pages:</span> <span id="rtpages"></span></div>
+      <div class="row" style="align-items:flex-start;gap:16px">
+        <div style="flex:1 1 300px;min-width:260px"><div class="grid" id="nowgrid"></div></div>
+        <div style="flex:1 1 320px"><div class="kv" style="margin-bottom:4px">On the radio right now</div><div id="liveradio"></div></div>
+      </div>
+      <div style="margin-top:8px"><span class="kv">Station display screens:</span> <span id="pspages"></span></div>
+      <div><span class="kv">Now-playing screens:</span> <span id="rtpages"></span></div>
     </div>
     <div class="card"><h3>Transmitter</h3>
       <div class="grid" id="txgrid"></div>
@@ -98,63 +151,104 @@
         <tbody id="piecerows"></tbody></table>
     </div>
     <div class="card" id="editor" style="display:none"><h3>Edit: <span id="e-key" class="mono"></span></h3>
-      <div class="row"><label>Type</label><select id="e-type"><option value="">auto</option><option value="show">Show piece (counted)</option><option value="interstitial">Interstitial (not counted)</option></select><span id="e-typeauto" class="kv"></span></div>
-      <div class="row"><label>Title</label><input type="text" id="e-title" size="40"><span class="kv" id="e-ttag"></span></div>
-      <div class="row"><label>Artist</label><input type="text" id="e-artist" size="40"><span class="kv" id="e-atag"></span></div>
-      <div class="row"><label>Short name (PS)</label><input type="text" id="e-short" size="24"></div>
-      <div class="help">What the 8-character PS display shows; long names are split into word pages. Defaults to the title.</div>
-      <div class="row"><label>Extra text (RT)</label><input type="text" id="e-extra" size="50"></div>
-      <div class="help">Used by <span class="mono">{extra}</span> in the RT template, e.g. a greeting.</div>
-      <div class="row"><label>PS template</label><input type="text" id="e-ps_template" size="30" placeholder="(global)"></div>
-      <div class="row"><label>RT template</label><input type="text" id="e-rt_template" size="50" placeholder="(global)"></div>
-      <div class="help">Tokens: {count} {n} {N} {title} {artist} {short} {extra} {station} {next}. Leave empty to use the Settings templates.</div>
-      <div class="row"><label>PS page time (s)</label><input type="number" id="e-ps_s" step="0.5" min="1" max="30" style="width:80px" placeholder="global">
-        <label style="min-width:0">RT page time (s)</label><input type="number" id="e-rt_s" step="1" min="4" max="120" style="width:80px" placeholder="global"></div>
-      <div class="row"><label>Volume (0-255)</label><input type="number" id="e-vol" min="0" max="255" step="1" style="width:80px" placeholder="default">
-        <input type="range" id="e-volr" min="0" max="255" oninput="$('e-vol').value=this.value;$('e-vol').dispatchEvent(new Event('input'))">
+      <div class="sect">Names</div>
+      <div class="row"><label>Title</label><input type="text" id="e-title" size="40"><span class="mk" title="Shows in the now-playing text (2)">2</span><span class="kv" id="e-ttag"></span></div>
+      <div class="row"><label>Artist</label><input type="text" id="e-artist" size="40"><span class="mk" title="Shows in the now-playing text (2)">2</span><span class="kv" id="e-atag"></span></div>
+      <div class="row"><label>Greeting / extra</label><input type="text" id="e-extra" size="40" placeholder="e.g. Merry Christmas!"><span class="mk" title="Shows in the now-playing text (2)">2</span></div>
+      <div class="help">Added after the artist when it fits. Empty title/artist use the song's tags.</div>
+      <div class="row"><label>Short name</label><input type="text" id="e-short" size="24"><span class="mk" title="Shows in the station display (1)">1</span><span class="kv" id="e-shortnote"></span></div>
+      <div class="row"><label>Counts in the show?</label><select id="e-type"><option value="">automatic</option><option value="show">Yes: a song (x/N)</option><option value="interstitial">No: Station ID / intro</option></select><span id="e-typeauto" class="kv"></span></div>
+
+      <div class="sect">Volume</div>
+      <div class="row"><label>Volume</label><input type="range" id="e-volr" min="0" max="255" style="width:220px" oninput="$('e-vol').value=this.value;$('e-vol').dispatchEvent(new Event('input'))">
+        <input type="number" id="e-vol" min="0" max="255" step="1" style="width:70px" placeholder="default">
         <button class="buttons" onclick="FM.volTry()">Try now</button><span id="e-volnote" class="kv"></span></div>
-      <div class="help">Transmitter volume (VOL) while this piece plays. Empty = the default volume (Settings). Applied as the piece starts;
-        <b>Try now</b> sends it straight away so you can listen. Overmodulation: <b id="e-ovm">-</b>. The tag in the list updates after every play.</div>
-      <h4 style="margin:12px 0 4px">RDS text</h4>
-      <div class="row"><label>Custom text</label><input type="checkbox" id="e-custom" onchange="FM.customToggle()">
-        <span class="kv">off = built from the names and templates above (shown greyed). On = these lines are sent exactly as written.</span></div>
-      <div class="row" style="align-items:flex-start"><label>PS lines<br><span class="kv">8 chars, one per line</span></label>
-        <textarea id="e-ps_lines" rows="6" cols="14" class="mono" spellcheck="false"></textarea>
-        <label style="min-width:0">RT lines<br><span class="kv">64 chars, one per line</span></label>
-        <textarea id="e-rt_lines" rows="6" cols="70" class="mono" spellcheck="false"></textarea></div>
-      <div class="help">Each line rotates in turn while this piece plays; add your own lines anywhere (e.g. <span class="mono">MERRY</span> / <span class="mono">XMAS</span>, or
-        <span class="mono">{count} Merry Christmas from our house</span>). Longer lines are split automatically.
-        Tokens stay live: <span class="mono">{count}</span> (x/N, repeated on every page when it starts the line), <span class="mono">{station}</span>, <span class="mono">{title}</span>, <span class="mono">{artist}</span>, <span class="mono">{next}</span>...
-        <button class="buttons" onclick="FM.refill()">Refill from names</button></div>
-      <div class="row"><label>Preview in playlist</label><select id="e-pl"></select></div>
-      <div><span class="kv">PS:</span> <span id="pv-ps"></span></div>
-      <div><span class="kv">RT:</span> <span id="pv-rt"></span></div>
-      <div class="row" style="margin-top:8px"><button class="buttons" onclick="FM.savePiece()">Save names</button>
-        <button class="buttons" onclick="FM.clearPiece()">Clear (use tags)</button></div>
+      <div class="help">Transmitter volume (0-255) while this piece plays. Empty = the default volume. <b>Try now</b> sends it straight away.
+        Overmodulation: <b id="e-ovm">-</b>. The tag in the list updates after every play.</div>
+
+      <div class="sect">On-air text</div>
+      <div class="ed2">
+        <div><div class="kv" style="margin-bottom:4px">Live preview: how a radio shows it <span id="pv-meta"></span></div><div id="pvradio"></div>
+          <div class="help" style="margin:6px 0 0">Updates as you type. Click into a box (or hover a part of the display) to see which part it controls.</div></div>
+        <div>
+          <div class="opt" style="padding-top:0"><div><div class="t">Write my own text for this piece</div>
+            <div class="d">Off = made from the names above (shown greyed). On = the lines below go on air exactly as written, in order.</div></div>
+            <div class="ctl"><label class="sw"><input type="checkbox" id="e-custom" onchange="FM.customToggle()"><span></span></label></div></div>
+          <div class="field" data-z="ps"><div class="t"><span class="mk">1</span> Station display <span class="kv">(PS) &middot; 8 characters per screen</span><span class="arrow">&#9664; shows at <span class="mk">1</span> on the display</span></div>
+            <div class="d" id="e-psnote">One screen per line. Longer lines are split into several screens.</div>
+            <textarea id="e-ps_lines" class="lines" rows="4" spellcheck="false"></textarea><div class="lc" id="lc-ps"></div></div>
+          <div class="field" data-z="rt" style="margin-top:10px"><div class="t"><span class="mk">2</span> Now-playing text <span class="kv">(RadioText) &middot; up to 64 characters per screen</span><span class="arrow">&#9664; shows at <span class="mk">2</span> on the display</span></div>
+            <div class="d" id="e-rtnote">One screen per line; they take turns.</div>
+            <textarea id="e-rt_lines" class="lines" rows="4" spellcheck="false"></textarea><div class="lc" id="lc-rt"></div></div>
+          <div style="margin-top:6px"><span class="kv">Insert:</span>
+            <button class="tok" onclick="FM.tok('{count}')" title="The show counter, e.g. 2/4. Stays correct when shows change.">x/N counter</button>
+            <button class="tok" onclick="FM.tok('{title}')">Title</button><button class="tok" onclick="FM.tok('{artist}')">Artist</button>
+            <button class="tok" onclick="FM.tok('{station}')">Station name</button><button class="tok" onclick="FM.tok('{next}')">Next show time</button>
+            <button class="buttons" onclick="FM.refill()" style="margin-left:8px">Start over from names</button></div>
+        </div>
+      </div>
+      <div class="row"><label>Preview as in playlist</label><select id="e-pl"></select></div>
+      <div><span class="kv">Station display screens:</span> <span id="pv-ps"></span></div>
+      <div><span class="kv">Now-playing screens:</span> <span id="pv-rt"></span></div>
+
+      <details class="adv"><summary>Advanced: patterns and timing for this piece</summary>
+        <div class="row"><label>Station display pattern</label><input type="text" id="e-ps_template" size="30" placeholder="(from settings)"></div>
+        <div class="row"><label>Now-playing pattern</label><input type="text" id="e-rt_template" size="50" placeholder="(from settings)"></div>
+        <div class="help">Patterns use {count} {n} {N} {title} {artist} {short} {extra} {station} {next}. Leave empty to use the ones in "How it works".</div>
+        <div class="row"><label>Seconds per screen</label><input type="number" id="e-ps_s" step="0.5" min="1" max="30" style="width:80px" placeholder="default"> <span class="kv">station display</span>
+          <input type="number" id="e-rt_s" step="1" min="4" max="120" style="width:80px" placeholder="default"> <span class="kv">now-playing</span></div>
+      </details>
+      <div class="row" style="margin-top:12px"><button class="buttons" onclick="FM.savePiece()">Save</button>
+        <button class="buttons" onclick="FM.clearPiece()">Reset to tags</button></div>
     </div>
-    <div class="card"><h3>RDS automation</h3>
+    <div class="card"><h3>On-air text: how it works</h3>
       <div id="rdsset"></div>
-      <button class="buttons" onclick="FM.saveSettings('rdsset')">Save RDS settings</button>
+      <button class="buttons" onclick="FM.saveSettings('rdsset')">Save</button>
     </div>
   </div>
 
-  <!-- ============================== RDS FIELDS -->
+  <!-- ============================== STATION & RDS -->
   <div class="tab" id="t-rds">
-    <div class="card"><h3>Manual PS / RT</h3>
-      <div class="help" style="margin-left:0" id="manualnote"></div>
-      <div class="row"><label>PS (8)</label><input type="text" id="m-ps" maxlength="8" size="10" oninput="cnt(this,8)"><span class="cnt"></span>
-        <button class="buttons" onclick="FM.cmd('PS '+val('m-ps'))">Set</button></div>
-      <div class="row"><label>RT (64)</label><input type="text" id="m-rt" maxlength="64" size="60" oninput="cnt(this,64)"><span class="cnt"></span>
-        <button class="buttons" onclick="FM.cmd('RT '+val('m-rt'))">Set</button></div>
+    <div class="card"><h3>What listeners see</h3>
+      <div class="callout">RDS is the text a radio shows next to the frequency. It has two parts:
+        the <b>station display</b> (PS, 8 characters, meant to be your station name) and the
+        <b>now-playing text</b> (RadioText, up to 64 characters, where song names go).</div>
+      <div id="rdsradio"></div>
     </div>
-    <div class="card"><h3>RDS</h3>
-      <div class="row"><label>RDS</label><button class="buttons" onclick="FM.cmd('RDS ON')">On</button><button class="buttons" onclick="FM.cmd('RDS OFF')">Off (mute)</button></div>
-      <div class="row"><label>PI (hex)</label><input type="text" id="r-pi" size="6"><button class="buttons" onclick="FM.cmd('PI '+val('r-pi'))">Set</button></div>
-      <div class="help">Station identifier. US stations derive it from call letters; any value works for a light show.</div>
-      <div class="row"><label>PTY (RBDS)</label><select id="r-pty"></select><button class="buttons" onclick="FM.cmd('PTY '+val('r-pty'))">Set</button></div>
-      <div class="row"><label>TP / TA / MS / STEREO</label>
-        <span id="r-flags"></span></div>
-      <div class="help">TP = traffic programme, TA = traffic announcement now (leave off), MS = music (on), STEREO = stereo flag.</div>
+    <div class="card"><h3>Station identity</h3>
+      <div class="opt"><div><div class="t"><span class="mk">1</span> Station name</div>
+          <div class="d">What radios show as your station (8 characters). With car-friendly text on, it stays on screen the whole show.</div></div>
+        <div class="ctl"><input type="text" id="r-name" maxlength="8" size="10" class="mono" oninput="cnt(this,8)"><span class="cnt"></span>
+          <button class="buttons" onclick="FM.setName()">Save</button></div></div>
+      <div class="opt"><div><div class="t">Station code <span class="kv">(PI)</span></div>
+          <div class="d">A 4-character code (0-9, A-F) radios use to recognise your station and keep it in presets. Pick one and leave it:
+            changing it makes radios treat you as a different station. Real US stations derive it from their call letters; any code works for a low-power show.</div></div>
+        <div class="ctl"><input type="text" id="r-pi" size="6" maxlength="4" class="mono" style="text-transform:uppercase"><button class="buttons" onclick="FM.setPI()">Save</button></div></div>
+      <div class="opt"><div><div class="t">Program type <span class="kv">(PTY)</span></div>
+          <div class="d">A genre label. Some radios show it (e.g. "Soft Music") and some let people search by it.</div></div>
+        <div class="ctl"><select id="r-pty"></select><button class="buttons" onclick="FM.cmd('PTY '+val('r-pty'))">Save</button></div></div>
+    </div>
+    <div class="card"><h3>Signals to the radio</h3>
+      <div class="opt"><div><div class="t">Send RDS text</div><div class="d">Off = radios show only the frequency.</div></div>
+        <div class="ctl"><label class="sw"><input type="checkbox" id="f-RDS" onchange="FM.flag('RDS',this)"><span></span></label></div></div>
+      <div class="opt"><div><div class="t">Music <span class="kv">(MS)</span></div><div class="d">On = music, off = talk. A few radios adjust their sound for it. Leave on.</div></div>
+        <div class="ctl"><label class="sw"><input type="checkbox" id="f-MS" onchange="FM.flag('MS',this)"><span></span></label></div></div>
+      <div class="opt"><div><div class="t">Stereo <span class="kv">(STEREO)</span></div><div class="d">Tells the radio the broadcast is in stereo. Leave on.</div></div>
+        <div class="ctl"><label class="sw"><input type="checkbox" id="f-STEREO" onchange="FM.flag('STEREO',this)"><span></span></label></div></div>
+      <div class="opt"><div><div class="t">Traffic station <span class="kv">(TP)</span></div><div class="d">Only for stations that broadcast traffic reports. Leave off.</div></div>
+        <div class="ctl"><label class="sw"><input type="checkbox" id="f-TP" onchange="FM.flag('TP',this)"><span></span></label></div></div>
+      <div class="opt"><div><div class="t">Traffic report now <span class="kv">(TA)</span></div><div class="d"><span class="warn">Leave off.</span>
+          When on, many cars interrupt whatever they are playing (even other stations or phones) and turn the volume up.</div></div>
+        <div class="ctl"><label class="sw"><input type="checkbox" id="f-TA" onchange="FM.flag('TA',this)"><span></span></label></div></div>
+    </div>
+    <div class="card"><h3>Type text by hand</h3>
+      <div class="help" style="margin-left:0" id="manualnote"></div>
+      <div class="opt"><div><div class="t">Station display</div><div class="d">8 characters.</div></div>
+        <div class="ctl"><input type="text" id="m-ps" maxlength="8" size="10" class="mono" oninput="cnt(this,8)"><span class="cnt"></span>
+          <button class="buttons" onclick="FM.cmd('PS '+val('m-ps'))">Send</button></div></div>
+      <div class="opt"><div><div class="t">Now-playing text</div><div class="d">Up to 64 characters.</div></div>
+        <div class="ctl"><input type="text" id="m-rt" maxlength="64" size="50" oninput="cnt(this,64)"><span class="cnt"></span>
+          <button class="buttons" onclick="FM.cmd('RT '+val('m-rt'))">Send</button></div></div>
     </div>
   </div>
 
@@ -218,18 +312,20 @@
     'Religious Talk','Personality','Public','College','Spanish Talk','Spanish Music','Hip Hop','(27)','(28)','Weather',
     'Emergency Test','Emergency'];
   const RDS_SET = [
-    ['rds_auto','bool','Drive PS/RT from the show','Off = set PS/RT by hand on the RDS fields tab.'],
-    ['station_ps','text','Station PS tag','Shown between PS loops and when idle (8 chars), e.g. 105.5 FM.'],
-    ['station_between','bool','Station tag between PS loops',''],
-    ['ps_uppercase','bool','PS in capitals',''],
-    ['ps_center','bool','Center short PS pages',''],
-    ['ps_page_s','num','PS page time (s)','1-30. Radios need ~2 s to latch a PS page.'],
-    ['rt_page_s','num','RT page time (s)','4-120. Each RT page is sent as new text (A/B flag flips).'],
-    ['ps_template','text','PS template',''],
-    ['rt_template_show','text','RT template: show pieces','Start with {count} to repeat the x/N counter on every page.'],
-    ['rt_template_inter','text','RT template: interstitials',''],
-    ['idle_ps','text','PS when no show',''],
-    ['idle_rt','text','RT when no show','{next} = next scheduled show time.'],
+    ['car_mode','bool','Car-friendly text (recommended)','The station display stays on your station name and the song goes in the now-playing text: one line per song, changed only when the song changes. Cars (Tesla included) struggle to show text that changes every few seconds. Off = the song name is paged through the station display too, which some home radios like.'],
+    ['rds_auto','bool','Follow the show automatically','Off = nothing is sent automatically; type text by hand on the Station & RDS tab.'],
+    ['station_ps','text8','Station name','What radios show as your station (8 characters), e.g. 105.5 FM.'],
+    ['idle_rt','text','Now-playing text between shows','{next} = the next show time.'],
+    ['__adv__'],
+    ['rt_template_show','text','Now-playing pattern: songs','Start with {count} for the x/N counter. Tokens: {count} {title} {artist} {extra} {station} {next}.'],
+    ['rt_template_inter','text','Now-playing pattern: Station ID / intros',''],
+    ['rt_page_s','num','Seconds per now-playing screen','When a piece has several now-playing lines. Car-friendly uses at least 20 s: each change blanks the text on many radios while they re-read it.'],
+    ['ps_template','text','Station display pattern (car-friendly off)','{short} = the short name.'],
+    ['ps_page_s','num','Seconds per station-display screen','Car-friendly uses at least 4 s.'],
+    ['station_between','bool','Station name between song screens','Car-friendly off only.'],
+    ['ps_uppercase','bool','Station display in capitals',''],
+    ['ps_center','bool','Center short station-display screens',''],
+    ['idle_ps','text','Station display between shows','{station} = the station name.'],
   ];
   const GEN_SET = [
     ['port','text','Serial port','Pi GPIO UART: /dev/serial0 (GPIO14 TX pin 8, GPIO15 RX pin 10).'],
@@ -283,6 +379,42 @@
   };
   FM.save = function () { if (confirm('Save the FM30\'s current settings to its flash?')) FM.cmd('SAVE'); };
 
+  // ---------------------------------------------------------------- radio display
+  // Shows PS/RT the way a car radio would; cycles through screens at their real timing.
+  function Radio(el) {
+    this.el = el; this.ps = []; this.rt = []; this.pi = 0; this.ri = 0; this.t1 = null; this.t2 = null; this.sig = '';
+    el.innerHTML = '<div class="radio"><div class="lcd"><div class="top"><span><span class="dot"></span><span class="freq"></span></span><span class="rbadge">RDS</span></div>' +
+      '<div class="zone" data-z="ps"><span class="mk">1</span><div class="lbl">STATION</div><div class="ps"></div></div>' +
+      '<div class="zone" data-z="rt"><span class="mk">2</span><div class="lbl">NOW PLAYING</div><div class="rt"></div></div></div></div>';
+    this.q = c => el.querySelector(c);
+  }
+  Radio.prototype.set = function (o) {
+    this.q('.freq').textContent = o.freq != null ? o.freq + ' FM' : 'FM';
+    this.q('.dot').className = 'dot' + (o.onair ? ' on' : '');
+    this.q('.rbadge').textContent = o.rds === false ? 'RDS OFF' : 'RDS';
+    const ps = (o.ps || []).length ? o.ps : [''], rt = (o.rt || []).length ? o.rt : [''];
+    const sig = JSON.stringify([ps, rt, o.ps_s, o.rt_s]);
+    if (sig === this.sig) return;
+    this.sig = sig; this.ps = ps; this.rt = rt; this.pi = this.ri = 0;
+    clearInterval(this.t1); clearInterval(this.t2);
+    const showPS = () => {
+      const t = (this.ps[this.pi++ % this.ps.length] || '').padEnd(8, ' ').slice(0, 8);
+      this.q('.ps').innerHTML = t.split('').map(ch => '<span class="c">' + (ch === ' ' ? '&nbsp;' : esc(ch)) + '</span>').join('');
+    };
+    const showRT = () => {
+      const r = this.q('.rt'), txt_ = this.rt[this.ri++ % this.rt.length] || '';
+      if (this.rt.length > 1) { r.classList.add('blank'); setTimeout(() => { r.textContent = txt_; r.classList.remove('blank'); }, 300); }
+      else r.textContent = txt_;
+    };
+    showPS(); showRT();
+    if (this.ps.length > 1) this.t1 = setInterval(showPS, (o.ps_s || 4) * 1000);
+    if (this.rt.length > 1) this.t2 = setInterval(showRT, (o.rt_s || 20) * 1000);
+  };
+  Radio.prototype.hl = function (zone, on) {
+    this.el.querySelectorAll('.zone').forEach(z => z.classList.toggle('hl', on && z.dataset.z === zone));
+  };
+  let RLIVE = null, RRDS = null, RPV = null;
+
   function kv(label, v) { return '<div class="kv">' + esc(label) + '<b>' + esc(v) + '</b></div>'; }
   function pages(list, now) { return (list || []).map(p => '<span class="page' + (p === now ? ' now' : '') + '">' + esc(p) + '</span><span class="cnt">' + p.length + '</span>').join(' '); }
 
@@ -314,15 +446,22 @@
       kv('Power', f.power != null ? f.power + ' / target ' + f.power_target : '-') +
       kv('Vtune', f.vtune != null ? f.vtune + ' V (exp ' + f.vtune_expected + ')' : '-') +
       kv('Pilot lock', f.pilot_lock ? 'yes' : 'no') + kv('RDS', f.rds ? 'on' : 'muted') +
-      kv('PS on air', f.ps != null ? '[' + f.ps + ']' : '-') + kv('RT on air', f.rt || '-') +
+      kv('Station display (PS)', f.ps != null ? '[' + f.ps + ']' : '-') + kv('Now-playing text (RT)', f.rt || '-') +
       kv('Volume / balance', f.vol != null ? f.vol + ' / ' + f.bal : '-') +
       kv('Overmodulation', d.ovm && d.ovm.total != null ? (d.ovm.last_min ? '⚠ ' : '') +
         d.ovm.last_min + ' in the last minute · ' + (d.ovm.piece != null ? d.ovm.piece + ' this song · ' : '') + d.ovm.total + ' total' : '-') +
       kv('Faults', (f.fault ? f.fault + ' ' : '') + '(' + (f.faults || 0) + ' total)') +
-      kv('PI / PTY', f.pi != null ? f.pi + ' / ' + (PTY[f.pty] || f.pty) : '-') + kv('Uptime', f.uptime != null ? f.uptime + ' s' : '-');
+      kv('Station code / program type', f.pi != null ? f.pi + ' / ' + (PTY[f.pty] || f.pty) : '-') + kv('Uptime', f.uptime != null ? f.uptime + ' s' : '-');
+    const live = {freq: f.freq, onair: !!f.tx, rds: !!f.rds, ps: f.ps != null ? [f.ps] : [], rt: f.rt != null ? [f.rt] : []};
+    if (RLIVE) RLIVE.set(live);
+    if (RRDS) RRDS.set(live);
+    ['RDS', 'MS', 'STEREO', 'TP', 'TA'].forEach(k => {
+      const el = $('f-' + k), v = f[k === 'RDS' ? 'rds' : k.toLowerCase()];
+      if (el && v != null && !el._busy) el.checked = !!v;
+    });
     $('rawstatus').textContent = JSON.stringify(f, null, 1);
     $('linkstats').textContent = JSON.stringify(d.link, null, 1);
-    $('manualnote').textContent = r.auto ? 'RDS automation is on, so manual PS/RT are refused. Turn it off under Show & RDS.' : 'RDS automation is off: these set PS/RT directly.';
+    $('manualnote').textContent = r.auto ? 'The plugin is following the show, so typed text would be overwritten and is refused. Turn off "Follow the show automatically" on the Show & RDS tab first.' : 'Not following the show: text you send stays on air.';
     if (!refresh.seeded && f.freq != null) {        // fill the controls once
       refresh.seeded = true;
       $('c-freq').value = f.freq; $('c-vol').value = f.vol; txt('c-volv', f.vol); $('c-bal').value = f.bal; txt('c-balv', f.bal);
@@ -334,18 +473,25 @@
 
   // ---------------------------------------------------------------- settings
   function settingRows(host, defs) {
-    $(host).innerHTML = defs.map(([k, t, label, help]) => {
+    let html = '', adv = false;
+    defs.forEach(([k, t, label, help]) => {
+      if (k === '__adv__') { html += '<details class="adv"><summary>Advanced: patterns and timing</summary>'; adv = true; return; }
       const v = SET[k];
-      const input = t === 'bool' ? '<input type="checkbox" data-k="' + k + '"' + (v ? ' checked' : '') + '>'
-        : '<input type="' + (t === 'num' ? 'number' : 'text') + '" step="any" data-k="' + k + '" value="' + esc(v) + '" size="' + (t === 'num' ? 8 : 50) + '">';
-      return '<div class="row"><label>' + esc(label) + '</label>' + input + '</div>' + (help ? '<div class="help">' + esc(help) + '</div>' : '');
-    }).join('');
+      const input = t === 'bool' ? '<label class="sw"><input type="checkbox" data-k="' + k + '"' + (v ? ' checked' : '') + '><span></span></label>'
+        : '<input type="' + (t === 'num' ? 'number' : 'text') + '" step="any" data-k="' + k + '" value="' + esc(v) + '"' +
+          (t === 'text8' ? ' maxlength="8" size="10" class="mono"' : ' size="' + (t === 'num' ? 8 : 46) + '"') + '>';
+      html += '<div class="opt"><div><div class="t">' + esc(label) + '</div>' + (help ? '<div class="d">' + esc(help) + '</div>' : '') +
+        '</div><div class="ctl">' + input + '</div></div>';
+    });
+    $(host).innerHTML = html + (adv ? '</details>' : '');
   }
   async function loadSettings() {
     const d = await call('settings');
     if (!d.settings) return;
     SET = d.settings;
     settingRows('rdsset', RDS_SET);
+    if (!$('r-name').value) { $('r-name').value = SET.station_ps || ''; cnt($('r-name'), 8); }
+    editorNotes();
     settingRows('genset', GEN_SET);
     $('lcdslots').innerHTML = ['2', '3', '4'].map(n => {
       const m = (SET.lcd_msgs || {})[n] || ['', ''];
@@ -355,6 +501,27 @@
         '<button class="buttons" onclick="FM.lcd(' + n + ')">Set</button><button class="buttons" onclick="FM.lcd(' + n + ',1)">Clear</button></div>';
     }).join('');
   }
+  FM.setName = async function () {
+    const v = $('r-name').value.trim();
+    if (!v) { toast('Enter a station name', false); return; }
+    const d = await call('settings', 'PUT', {station_ps: v});
+    if (d.ok) { toast('Station name saved', true); SET = d.settings; loadSettings(); } else toast(d.error || 'failed', false);
+  };
+  FM.setPI = function () {
+    const v = val('r-pi').toUpperCase();
+    if (!/^[0-9A-F]{4}$/.test(v)) { toast('The station code is 4 characters, 0-9 and A-F (e.g. 1234 or C0DE)', false); return; }
+    if (ST && ST.fm30 && String(ST.fm30.pi).toUpperCase() === v) { toast('Already ' + v, true); return; }
+    if (!confirm('Change the station code to ' + v + '?\nRadios will treat this as a different station (presets may stop matching).')) return;
+    FM.cmd('PI ' + v);
+  };
+  FM.flag = async function (name, el) {
+    const on = el.checked;
+    if (name === 'TA' && on && !confirm('Turn on "traffic report now"?\nMany cars will interrupt what they are playing and turn the volume up. Normally leave this off.')) { el.checked = false; return; }
+    el._busy = true;
+    const d = await FM.cmd(name === 'RDS' ? 'RDS ' + (on ? 'ON' : 'OFF') : name + ' ' + (on ? 1 : 0));
+    el._busy = false;
+    if (!d || !d.ok) el.checked = !on;
+  };
   FM.lcd = function (n, clear) {
     if (clear) { $('lt' + n).value = ''; $('lb' + n).value = ''; }
     const t = val('lt' + n).replace(/\|/g, ''), b = val('lb' + n).replace(/\|/g, '');
@@ -366,7 +533,7 @@
       out[el.dataset.k] = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? Number(el.value) : el.value);
     });
     const d = await call('settings', 'PUT', out);
-    if (d.ok) { toast(d.restart_needed ? 'Saved - restart the service for port changes' : 'Saved', true); SET = d.settings; }
+    if (d.ok) { toast(d.restart_needed ? 'Saved - restart the service for port changes' : 'Saved', true); SET = d.settings; editorNotes(); if (SEL) FM.preview(); }
     else toast(d.error || 'failed', false);
   };
 
@@ -427,6 +594,33 @@
     FM.cmd('VOL ' + v);
   };
   const LINES = ['ps_lines', 'rt_lines'];
+  let LASTTA = 'e-rt_lines';
+  function lineCounts(id, max) {
+    const out = $(id).value.split('\n').map((l, i) => {
+      l = l.trim(); if (!l) return '';
+      const tok = /\{\w+\}/.test(l), n = l.length;
+      const st = tok ? '<span class="kv">uses fields (e.g. {count}): see the preview for the real length</span>' : n <= max ? '<span class="ok">\u2713 fits</span>'
+        : '<span class="long">' + Math.ceil(n / max) + '+ screens</span>';
+      return '<div><span class="n">' + (i + 1) + '</span>' + (tok ? '' : '<span>' + n + '/' + max + '</span>') + st + '</div>';
+    }).join('');
+    $(id === 'e-ps_lines' ? 'lc-ps' : 'lc-rt').innerHTML = out;
+  }
+  function updateLC() { lineCounts('e-ps_lines', 8); lineCounts('e-rt_lines', 64); }
+  function editorNotes() {
+    const car = !SET || SET.car_mode !== false;
+    if ($('e-shortnote')) txt('e-shortnote', car ? 'only used when car-friendly text is off' : 'what the station display pages through');
+    if ($('e-psnote')) $('e-psnote').innerHTML = car
+      ? '<span class="warn">Car-friendly text is on:</span> keep this to your station name. Changing screens here are hard for cars to show.'
+      : 'One screen per line. Longer lines are split into several screens.';
+    if ($('e-rtnote')) txt('e-rtnote', car ? 'One line per song is best. Extra lines take turns, at least 20 s each.' : 'One screen per line; they take turns.');
+  }
+  FM.tok = function (t) {
+    if (!$('e-custom').checked) { $('e-custom').checked = true; FM.customToggle(); }
+    const ta = $(LASTTA), a = ta.selectionStart != null ? ta.selectionStart : ta.value.length, b = ta.selectionEnd != null ? ta.selectionEnd : a;
+    ta.value = ta.value.slice(0, a) + t + ta.value.slice(b);
+    ta.focus(); ta.selectionStart = ta.selectionEnd = a + t.length;
+    updateLC(); clearTimeout(pvTimer); pvTimer = setTimeout(FM.preview, 300);
+  };
   let AUTO = {ps: [], rt: []};
   function linesOf(id) { return $(id).value.split('\n').map(l => l.trim()).filter(l => l); }
   function setCustom(on) {
@@ -437,6 +631,7 @@
     if ($('e-custom').checked) return;
     $('e-ps_lines').value = AUTO.ps.join('\n');
     $('e-rt_lines').value = AUTO.rt.join('\n');
+    updateLC();
   }
   FM.customToggle = function () {
     const on = $('e-custom').checked;
@@ -447,6 +642,7 @@
   FM.refill = function () {
     $('e-ps_lines').value = AUTO.ps.join('\n');
     $('e-rt_lines').value = AUTO.rt.join('\n');
+    updateLC();
     FM.preview();
   };
   FM.edit = function (i) {
@@ -459,6 +655,7 @@
     AUTO = {ps: [], rt: []};
     LINES.forEach(k => { $('e-' + k).value = (p.names[k] || []).join('\n'); });
     setCustom(custom);
+    updateLC(); editorNotes();
     volNote();
     txt('e-ovm', p.ovm ? p.ovm.ovm + ' on its last play (' + p.ovm.at + (p.ovm.vol != null ? ', vol ' + p.ovm.vol : '') + ')' : 'not played yet');
     txt('e-ttag', p.tags.title ? 'tag: ' + p.tags.title : 'no tag');
@@ -481,13 +678,15 @@
     if (!d.ps) return;
     AUTO = {ps: d.auto_ps || [], rt: d.auto_rt || []};
     showAuto();
-    $('pv-ps').innerHTML = pages(d.ps) + ' <span class="kv">' + d.ps_s + ' s each' + (d.n ? ' · piece ' + d.n + '/' + d.N : ' · not counted') + '</span>';
+    if (RPV) RPV.set({freq: ST && ST.fm30 ? ST.fm30.freq : null, onair: true, ps: d.ps, rt: d.rt, ps_s: d.ps_s, rt_s: d.rt_s});
+    txt('pv-meta', (d.n ? '· song ' + d.n + ' of ' + d.N : '· not counted') + (d.car_mode ? ' · car-friendly' : ''));
+    $('pv-ps').innerHTML = pages(d.ps) + ' <span class="kv">' + (d.ps.length > 1 ? d.ps_s + ' s each' : 'stays on') + '</span>';
     $('pv-rt').innerHTML = d.rt.map(p => '<div><span class="page">' + esc(p) + '</span><span class="cnt' + (p.length > 64 ? ' over' : '') + '">' + p.length + '/64</span></div>').join('') +
-      '<span class="kv">' + d.rt.length + ' page' + (d.rt.length === 1 ? '' : 's') + ', ' + d.rt_s + ' s each</span>';
+      '<span class="kv">' + d.rt.length + ' screen' + (d.rt.length === 1 ? ', stays on for the song' : 's, ' + d.rt_s + ' s each') + '</span>';
   };
   FM.savePiece = async function () {
     const d = await call('piece', 'PUT', {key: SEL, names: editorNames()});
-    if (d.ok) { toast('Saved names for ' + SEL, true); FM.loadPieces(); } else toast(d.error || 'failed', false);
+    if (d.ok) { toast('Saved ' + SEL + ' (live now if it is playing)', true); FM.loadPieces(); } else toast(d.error || 'failed', false);
   };
   FM.clearPiece = async function () {
     if (!confirm('Clear all custom names for ' + SEL + '?')) return;
@@ -507,9 +706,23 @@
     try { localStorage.setItem('fm30tab', t); } catch (e) {}
   }
   document.querySelectorAll('#fm30 .tabs button').forEach(b => b.addEventListener('click', () => activate(b.dataset.t)));
-  $('r-pty').innerHTML = PTY.map((n, i) => '<option value="' + i + '">' + i + ' ' + esc(n) + '</option>').join('');
-  $('r-flags').innerHTML = ['TP', 'TA', 'MS', 'STEREO'].map(f => '<span style="margin-right:10px">' + f +
-    ' <button class="buttons" onclick="FM.cmd(\'' + f + ' 1\')">1</button><button class="buttons" onclick="FM.cmd(\'' + f + ' 0\')">0</button></span>').join('');
+  $('r-pty').innerHTML = PTY.map((n, i) => '<option value="' + i + '">' + esc(n) + '</option>').join('');
+  RLIVE = new Radio($('liveradio')); RRDS = new Radio($('rdsradio')); RPV = new Radio($('pvradio'));
+  ['e-ps_lines', 'e-rt_lines'].forEach(id => {
+    $(id).addEventListener('focus', () => { LASTTA = id; });
+    $(id).addEventListener('input', updateLC);
+  });
+  // editing a box lights up the part of the display it controls, and hovering the display lights up the box
+  const ZONE_OF = {'e-ps_lines': 'ps', 'e-short': 'ps', 'e-ps_template': 'ps',
+                   'e-rt_lines': 'rt', 'e-title': 'rt', 'e-artist': 'rt', 'e-extra': 'rt', 'e-rt_template': 'rt'};
+  Object.entries(ZONE_OF).forEach(([id, z]) => {
+    ['focus', 'mouseenter'].forEach(ev => $(id).addEventListener(ev, () => RPV.hl(z, true)));
+    ['blur', 'mouseleave'].forEach(ev => $(id).addEventListener(ev, () => { if (document.activeElement && ZONE_OF[document.activeElement.id]) RPV.hl(ZONE_OF[document.activeElement.id], true); else RPV.hl(z, false); }));
+  });
+  $('pvradio').querySelectorAll('.zone').forEach(zn => {
+    zn.addEventListener('mouseenter', () => { zn.classList.add('hl'); document.querySelectorAll('#editor .field[data-z="' + zn.dataset.z + '"]').forEach(f => f.classList.add('hl')); });
+    zn.addEventListener('mouseleave', () => { zn.classList.remove('hl'); document.querySelectorAll('#editor .field.hl').forEach(f => f.classList.remove('hl')); });
+  });
   $('e-vol').addEventListener('input', volNote);
   document.querySelectorAll('#editor input, #editor select, #editor textarea').forEach(el => el.addEventListener('input', () => {
     clearTimeout(pvTimer); pvTimer = setTimeout(FM.preview, 300);

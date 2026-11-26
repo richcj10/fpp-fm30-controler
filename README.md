@@ -5,7 +5,9 @@ Runs a Ramsey FM30 with the `fm30_ctrl` STM32 controller (NUCLEO-G431KB) straigh
 What it does:
 
 - **TX with the show.** When the show starts, TX goes on. When the show has been stopped for a grace time (default 60 s, which covers the gap between playlist loops), TX goes off. On a remote FPP, the show state comes from the MultiSync master.
-- **Now-playing RDS.**
+- **Car-friendly RDS (default).** The station display (PS) stays on the station name and the song goes in the now-playing text (RadioText): one line per song, shortened to fit (greeting, then artist, then title), changed only when the song changes. Cars such as Teslas struggle with text that changes every few seconds. Turn it off under **Show & RDS → On-air text: how it works** to page song names through PS instead.
+- **Live radio preview.** A generic LCD shows exactly what a radio displays, on the Status tab (live), on **Station & RDS**, and in the piece editor (updates as you type, with each box linked to the part of the display it controls).
+- **Now-playing RDS** (car-friendly off).
   - PS shows a short name as 8-character word pages (about 2.5 s each). Long words are split with a hyphen, and the station tag shows between loops.
   - RT shows `x/N Title - Artist | extra`, split at word boundaries into pages of up to 64 characters. The counter starts every page, and pages rotate about every 10 s.
 - **Your own RDS text per piece.** On **Show & RDS**, click a piece and tick **Custom text**. The PS and RT lines are filled in from the names (e.g. `{count} Mary, Did You Know? - Pentatonix`). Edit them, add your own lines (`MERRY` / `XMAS`, `{count} Merry Christmas from our house`) or delete lines; they rotate in order while that piece plays. Tokens stay live, so `{count}` still shows the right x/N after the show changes. Long lines are split automatically. Untick to go back to automatic text.

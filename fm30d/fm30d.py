@@ -27,7 +27,7 @@ import pager as P               # noqa: E402
 from link import Link, LinkError  # noqa: E402
 from show import Show, SHOW, INTERSTITIAL  # noqa: E402
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 STATUS_PERIOD_S = 2.0
 SAVE_MIN_GAP_S = 10.0
 PIECE_KEYS = {"title", "artist", "short", "extra", "type", "ps_s", "rt_s", "ps_template", "rt_template",
@@ -35,6 +35,8 @@ PIECE_KEYS = {"title", "artist", "short", "extra", "type", "ps_s", "rt_s", "ps_t
 _REAPPLY = object()                     # forces the volume to be re-evaluated
 LINE_KEYS = ("ps_lines", "rt_lines")   # custom RDS text: list of lines, tokens allowed
 MAX_LINES = 20
+CAR_MIN_RT_S = 20.0      # car-friendly: each RT change blanks the radio's text while it re-reads it
+CAR_MIN_PS_S = 4.0
 
 DEFAULTS = {
     "port": "/dev/serial0",
@@ -44,12 +46,13 @@ DEFAULTS = {
     "tx_auto": True,                  # TX on when the show plays, off when it stops
     "tx_off_grace_s": 60,
     "rds_auto": True,                 # plugin drives PS/RT from the show
+    "car_mode": True,                 # PS fixed on the station name, one RT line per song (cars cope best)
     "station_ps": "105.5 FM",         # PS tag shown between PS loops and when idle
     "station_between": True,
     "ps_uppercase": True,
     "ps_center": True,
-    "ps_page_s": 2.5,
-    "rt_page_s": 10.0,
+    "ps_page_s": 4.0,
+    "rt_page_s": 20.0,
     "ps_template": "{short}",
     "rt_template_show": "{count} {title} - {artist} | {extra}",
     "rt_template_inter": "{title} - {artist} | {extra}",
@@ -380,20 +383,28 @@ class Daemon:
         fields.update({"n": n or "", "N": N or "", "count": P.counter(n, N),
                        "station": s.get("station_ps", ""), "next": nxt})
         up, center = s.get("ps_uppercase", True), s.get("ps_center", True)
+        car = bool(s.get("car_mode", True))
         live = playing and key
         if not live:
             ps_t, rt_t = s.get("idle_ps", "{station}"), s.get("idle_rt", "")
         else:
             ps_t = o.get("ps_template") or s.get("ps_template", "{short}")
             rt_t = o.get("rt_template") or (s.get("rt_template_show") if typ == SHOW else s.get("rt_template_inter"))
-        between = bool(live and s.get("station_between") and s.get("station_ps"))
+        if car and live:
+            ps_t = "{station}"                 # PS = station name only; song info goes in RT
+        between = bool(live and not car and s.get("station_between") and s.get("station_ps"))
+        if car:
+            fields = P.fit_rt_fields(rt_t, fields)   # one RT page: drop {extra}, then {artist}, if too long
 
         # automatic lines (templates), as editable text
         keep = dict(fields, count="{count}" if fields["count"] else "", station="{station}", next="{next}")
-        ps_auto_text = P.render(ps_t, fields)
-        auto_ps = [p.strip() for p in P.ps_pages(ps_auto_text, up, False) if p.strip()] if ps_auto_text else []
-        if between and auto_ps:
-            auto_ps.append("{station}")
+        if car and live:
+            auto_ps = ["{station}"] if s.get("station_ps") else []
+        else:
+            ps_auto_text = P.render(ps_t, fields)
+            auto_ps = [p.strip() for p in P.ps_pages(ps_auto_text, up, False) if p.strip()] if ps_auto_text else []
+            if between and auto_ps:
+                auto_ps.append("{station}")
         auto_rt = [P.render(rt_t, keep)] if P.render(rt_t, keep) else []
 
         if live and o.get("ps_lines"):
@@ -404,7 +415,7 @@ class Daemon:
                     ps += P.ps_pages(txt, up, center)
         else:
             ps_text = P.render(ps_t, fields)
-            ps = P.ps_pages(ps_text, up, center) if ps_text else []
+            ps = P.ps_pages(ps_text, up and not (car and live), center) if ps_text else []
             station = P.ps_pages(s.get("station_ps", ""), False, center)[0] if s.get("station_ps") else ""
             if between and station and ps and ps != [station]:
                 ps = ps + [station]
@@ -418,9 +429,13 @@ class Daemon:
             rt = rt or P.rt_pages(rt_t, fields)
         else:
             rt = P.rt_pages(rt_t, fields)
-        return {"ps": ps, "rt": rt,
-                "ps_s": float(o.get("ps_s") or s.get("ps_page_s", 2.5)),
-                "rt_s": float(o.get("rt_s") or s.get("rt_page_s", 10)),
+            if car:
+                rt = rt[:1]                    # fit_rt_fields already shortened it; never rotate
+        ps_s = float(o.get("ps_s") or s.get("ps_page_s", 4))
+        rt_s = float(o.get("rt_s") or s.get("rt_page_s", 20))
+        if car:
+            ps_s, rt_s = max(ps_s, CAR_MIN_PS_S), max(rt_s, CAR_MIN_RT_S)
+        return {"ps": ps, "rt": rt, "ps_s": ps_s, "rt_s": rt_s, "car_mode": car,
                 "auto_ps": auto_ps, "auto_rt": auto_rt}
 
     def _relayout(self, now):
@@ -522,7 +537,7 @@ class Daemon:
                         "piece": self.play["ovm"] if self.play else None},
                 "idle_off_in": (max(0, round(float(self.s.get("tx_off_grace_s", 60)) - (time.monotonic() - self.idle_since)))
                                 if self.idle_since else None),
-                "rds": {"auto": self.s.get("rds_auto"), "ps_pages": lay.get("ps", []), "rt_pages": lay.get("rt", []),
+                "rds": {"auto": self.s.get("rds_auto"), "car_mode": self.s.get("car_mode", True), "ps_pages": lay.get("ps", []), "rt_pages": lay.get("rt", []),
                         "ps_now": ps_cur, "rt_now": rt_cur, "ps_s": lay.get("ps_s"), "rt_s": lay.get("rt_s")},
             }
 

@@ -45,7 +45,8 @@ class EndToEnd(unittest.TestCase):
         time.sleep(0.8)
         cls.tmp = tempfile.TemporaryDirectory()
         cls.d = d = fm30d.Daemon(cls.tmp.name, f"socket://127.0.0.1:{cls.mport}")
-        d.s.update({"fpp_local": "http://local", "tx_off_grace_s": 1, "ps_page_s": 1.0, "rt_page_s": 4.0})
+        d.s.update({"fpp_local": "http://local", "tx_off_grace_s": 1, "ps_page_s": 1.0, "rt_page_s": 4.0,
+                     "car_mode": False})
         cls.state = {"playing": True}
 
         def fetch(url, timeout=3.0):
