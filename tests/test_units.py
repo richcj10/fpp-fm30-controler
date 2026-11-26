@@ -237,16 +237,36 @@ class CustomLinesTests(unittest.TestCase):
         self.assertNotIn("rt_lines", r["names"])
         self.assertEqual(self.lay()["rt"], ["2/4 Baby, It's Cold Outside - Drew Holcomb"])
 
-    def test_overmod_counted_per_piece(self):
+    def test_overmod_per_play_replaces_last_result(self):
         d = self.d
-        d.now = {"playing": True, "key": "MDYK.wav"}
-        for ov in (5, 5, 8, 9):
-            d._on_json('{"ovm": %d, "uptime": 10}' % ov)
-        d.now = {"playing": True, "key": "TSO-WiW.wav"}
-        d._on_json('{"ovm": 2, "uptime": 11}')          # STM32 restarted: counter from 0
-        st = d.api_status()["ovm"]
-        self.assertEqual((st["total"], st["last_min"], st["piece"]), (2, 6, 2))
-        self.assertEqual(st["by_piece"], {"MDYK.wav": 4, "TSO-WiW.wav": 2})
+        d.link.alive = lambda: True
+
+        def play(key):
+            with d.lock:
+                d.now = {"playing": True, "key": key}
+                d._track_play(d.now)
+
+        play("MDYK.wav")                                  # first poll: joined part-way
+        d._on_json('{"ovm": 5, "uptime": 10, "vol": 128}')
+        d._on_json('{"ovm": 5, "uptime": 11, "vol": 128}')
+        play("TSO-WiW.wav")                               # partial play with nothing seen: not recorded
+        self.assertNotIn("MDYK.wav", d.plays_store.data)
+        d._on_json('{"ovm": 9, "uptime": 12, "vol": 140}')
+        d._on_json('{"ovm": 2, "uptime": 13, "vol": 140}')   # STM32 restarted: counter from 0
+        self.assertEqual(d.api_status()["ovm"]["piece"], 6)
+        play("MDYK.wav")
+        w = d.plays_store.data["TSO-WiW.wav"]
+        self.assertEqual((w["ovm"], w["vol"], w["plays"], w["partial"]), (6, 140, 1, False))
+        self.assertEqual(sum(k for _, k in w["times"]), 6)          # where in the song, for the hover
+        self.assertTrue(all(isinstance(t, int) and t >= 0 for t, _ in w["times"]))
+        self.assertIn("secs", w)
+        play("TSO-WiW.wav")                               # next go-around: clean now
+        play("MDYK.wav")
+        w = d.plays_store.data["TSO-WiW.wav"]
+        self.assertEqual((w["ovm"], w["plays"]), (0, 2))
+        import fm30d as D
+        again = D.Store(os.path.join(self.tmp.name, "fpp-fm30-plays.json"), {})
+        self.assertEqual(again.data["TSO-WiW.wav"]["ovm"], 0)   # survives a restart
 
     def test_idle_ignores_custom_lines(self):
         self.d.api_piece_put("DHN -BiCOS.wav", {"rt_lines": ["Hello"]})

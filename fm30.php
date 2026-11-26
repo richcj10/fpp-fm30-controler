@@ -30,6 +30,9 @@
 #fm30 .badge.show { background:#cfe8d5; }
 #fm30 .badge.inter { background:#f1e3c6; }
 #fm30 .badge.need { background:#f6c8c8; }
+#fm30 .badge.ovm { background:#e74c3c; color:#fff; font-weight:bold; }
+#fm30 .badge.clean { background:#cfe8d5; }
+#fm30 .badge.recheck { background:#f1e3c6; }
 #fm30 #msg { position:fixed; right:16px; bottom:16px; padding:8px 14px; border-radius:6px; color:#fff; display:none; z-index:1000; max-width:60vw; }
 #fm30 pre { max-height:340px; overflow:auto; font-size:.8rem; background:rgba(128,128,128,.12); padding:8px; border-radius:6px; }
 #fm30 .lock { color:var(--warn); }
@@ -89,6 +92,8 @@
         <b>Show piece</b> = counted in x/N. <b>Interstitial</b> = not counted (Station ID, intros). Lead-in/lead-out are never counted.
         Empty fields fall back to the song's tags, then the file name. Click a piece to edit its names and RDS text.</div>
       <div class="row"><button class="buttons" onclick="FM.loadPieces()">Reload</button><span id="piecehost" class="kv"></span></div>
+      <div class="help" style="margin-left:0"><span class="badge ovm">overmod 12 @ vol 128</span> = the last play overmodulated (12 times, at volume 128): lower its volume. Hover a tag for how often per minute and where in the song.
+        <span class="badge clean">clean</span> = no overmodulation on its last play. <span class="badge recheck">recheck</span> = its volume changed since; the tag updates when it next plays.</div>
       <table><thead><tr><th>Piece</th><th>Type</th><th>Title</th><th>Artist</th><th>In playlists</th></tr></thead>
         <tbody id="piecerows"></tbody></table>
     </div>
@@ -109,7 +114,7 @@
         <input type="range" id="e-volr" min="0" max="255" oninput="$('e-vol').value=this.value;$('e-vol').dispatchEvent(new Event('input'))">
         <button class="buttons" onclick="FM.volTry()">Try now</button><span id="e-volnote" class="kv"></span></div>
       <div class="help">Transmitter volume (VOL) while this piece plays. Empty = the default volume (Settings). Applied as the piece starts;
-        <b>Try now</b> sends it straight away so you can listen. Overmodulation while it played: <b id="e-ovm">-</b> (since the service started; also on the Status tab).</div>
+        <b>Try now</b> sends it straight away so you can listen. Overmodulation: <b id="e-ovm">-</b>. The tag in the list updates after every play.</div>
       <h4 style="margin:12px 0 4px">RDS text</h4>
       <div class="row"><label>Custom text</label><input type="checkbox" id="e-custom" onchange="FM.customToggle()">
         <span class="kv">off = built from the names and templates above (shown greyed). On = these lines are sent exactly as written.</span></div>
@@ -375,12 +380,39 @@
       const typ = p.type === 'show' ? '<span class="badge show">show</span>' : '<span class="badge inter">interstitial</span>';
       const need = (p.effective.needs_name ? ' <span class="badge need">needs name</span>' : '') +
         (p.names.ps_lines || p.names.rt_lines ? ' <span class="badge show">custom RDS</span>' : '') +
-        (p.names.vol != null ? ' <span class="badge">vol ' + p.names.vol + '</span>' : '');
+        (p.names.vol != null ? ' <span class="badge">vol ' + p.names.vol + '</span>' : '') + ovmBadge(p, d.vol_default);
       return '<tr class="piece' + (SEL === p.key ? ' sel' : '') + '" onclick="FM.edit(' + i + ')"><td class="mono">' + esc(p.key) + need +
         '</td><td>' + typ + (p.type_auto ? ' <span class="kv">auto</span>' : '') + '</td><td>' + esc(p.effective.title) +
         '</td><td>' + esc(p.effective.artist) + '</td><td>' + esc(p.playlists.join(', ')) + '</td></tr>';
     }).join('') || '<tr><td colspan="5">No playlists found on the show master.</td></tr>';
   };
+  function mmss(t) { t = Math.max(0, Math.round(t)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
+  // hover text: how often (per minute) and where in the song it overmodulated
+  function ovmTip(n, secs, times, extra) {
+    let t = n + ' overmodulation' + (n === 1 ? '' : 's');
+    if (secs > 0) t += ' in ' + mmss(secs) + (n ? ' = ' + (n * 60 / secs).toFixed(1) + ' per minute' : '');
+    if (times && times.length) {
+      t += '\nAt (song time): ' + times.map(([s, k]) => mmss(s) + (k > 1 ? ' x' + k : '')).join(', ');
+      if (n > times.reduce((a, [, k]) => a + k, 0)) t += ', ...';
+    }
+    return t + (extra ? '\n' + extra : '');
+  }
+  function ovmBadge(p, vdef) {
+    let out = '';
+    const o = p.ovm, eff = p.names.vol != null ? p.names.vol : (vdef >= 0 ? vdef : null);
+    if (o) {
+      const tip = ovmTip(o.ovm, o.secs, o.times, 'Last play ' + o.at + (o.vol != null ? ' at vol ' + o.vol : '') +
+        (o.partial ? ' (joined part-way, times are from when it was joined)' : '') + ' · ' + o.plays + ' play(s) logged');
+      out += o.ovm ? ' <span class="badge ovm" title="' + esc(tip) + '">overmod ' + o.ovm + (o.vol != null ? ' @ vol ' + o.vol : '') + '</span>'
+                   : ' <span class="badge clean" title="' + esc(tip) + '">clean' + (o.vol != null ? ' @ vol ' + o.vol : '') + '</span>';
+      if (o.vol != null && eff != null && eff !== o.vol) out += ' <span class="badge recheck" title="Its volume changed after that play; the tag updates when it next plays.">recheck: vol now ' + eff + '</span>';
+    }
+    if (p.ovm_now != null) {
+      const dn = p.ovm_now_detail || {};
+      out += ' <span class="badge' + (p.ovm_now ? ' ovm' : '') + '" title="' + esc(ovmTip(p.ovm_now, dn.secs, dn.times, 'Playing now')) + '">playing: ' + p.ovm_now + ' so far</span>';
+    }
+    return out;
+  }
   const FIELDS = ['type', 'title', 'artist', 'short', 'extra', 'ps_template', 'rt_template', 'ps_s', 'rt_s', 'vol'];
   const NUMS = ['ps_s', 'rt_s', 'vol'];
   function volNote() {
@@ -428,7 +460,7 @@
     LINES.forEach(k => { $('e-' + k).value = (p.names[k] || []).join('\n'); });
     setCustom(custom);
     volNote();
-    txt('e-ovm', ST && ST.ovm && ST.ovm.by_piece ? String(ST.ovm.by_piece[p.key] || 0) : '-');
+    txt('e-ovm', p.ovm ? p.ovm.ovm + ' on its last play (' + p.ovm.at + (p.ovm.vol != null ? ', vol ' + p.ovm.vol : '') + ')' : 'not played yet');
     txt('e-ttag', p.tags.title ? 'tag: ' + p.tags.title : 'no tag');
     txt('e-atag', p.tags.artist ? 'tag: ' + p.tags.artist : '');
     txt('e-typeauto', p.type_auto ? 'auto = ' + p.type : '');
@@ -485,5 +517,6 @@
   try { const t = localStorage.getItem('fm30tab'); if (t) activate(t); } catch (e) {}
   loadSettings().then(refresh);
   setInterval(refresh, 2000);
+  setInterval(() => { if ($('t-show').classList.contains('active') && PIECES) FM.loadPieces(); }, 15000);
 })();
 </script>

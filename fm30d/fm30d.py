@@ -27,7 +27,7 @@ import pager as P               # noqa: E402
 from link import Link, LinkError  # noqa: E402
 from show import Show, SHOW, INTERSTITIAL  # noqa: E402
 
-VERSION = "0.3.2"
+VERSION = "0.4.0"
 STATUS_PERIOD_S = 2.0
 SAVE_MIN_GAP_S = 10.0
 PIECE_KEYS = {"title", "artist", "short", "extra", "type", "ps_s", "rt_s", "ps_template", "rt_template",
@@ -94,6 +94,8 @@ class Daemon:
         os.makedirs(cfg_dir, exist_ok=True)
         self.settings_store = Store(os.path.join(cfg_dir, "fpp-fm30-settings.json"), DEFAULTS)
         self.names_store = Store(os.path.join(cfg_dir, "fpp-fm30-names.json"), {})
+        # last complete play of each piece: {key: {"ovm", "vol", "at", "plays"}}
+        self.plays_store = Store(os.path.join(cfg_dir, "fpp-fm30-plays.json"), {})
         self.s = self.settings_store.data
         if port_override:
             self.s["port"] = port_override
@@ -116,7 +118,8 @@ class Daemon:
         self.vol_lock = threading.Lock()
         self.ovm_last = None             # last STM32 overmodulation counter
         self.ovm_hist = collections.deque()   # (time, new events)
-        self.ovm_piece = {}              # piece key -> overmods while it played (since service start)
+        self.play = None                 # piece playing now: {"key", "ovm", "vol", "full"}
+        self.play_init = False           # first show poll done (a piece already playing then is partial)
         self.last_save = 0.0
         self.show = Show(self.s, self.names_store.data, log=self.log)
         self.link = Link(self.s["port"], log=self.log)
@@ -154,12 +157,15 @@ class Daemon:
                     new = ov - self.ovm_last if ov >= self.ovm_last else ov    # counter restarts with the STM32
                     if new > 0:
                         self.ovm_hist.append((time.time(), new))
-                        key = self.now.get("key") if self.now.get("playing") else None
-                        if key:
-                            self.ovm_piece[key] = self.ovm_piece.get(key, 0) + new
+                        if self.play:
+                            self.play["ovm"] += new
+                            if len(self.play["at"]) < 60:       # where in the piece (s from its start)
+                                self.play["at"].append([int(time.time() - self.play["t0"]), new])
                 self.ovm_last = ov
             while self.ovm_hist and time.time() - self.ovm_hist[0][0] > 60:
                 self.ovm_hist.popleft()
+            if self.play and isinstance(d.get("vol"), int):
+                self.play["vol"] = d["vol"]
             self.fm30 = d
             self.fm30_at = time.time()
 
@@ -203,6 +209,7 @@ class Daemon:
                     now = self.show.now()
                     with self.lock:
                         self.now = now
+                        self._track_play(now)
                     self._tx_auto(now)
                     self._vol_auto(now)
                     self._relayout(now)
@@ -211,6 +218,50 @@ class Daemon:
             except Exception:
                 self.log("show loop error: " + traceback.format_exc().splitlines()[-1])
             time.sleep(0.1)
+
+    # ------------------------------------------------------------ overmodulation per play
+    def _track_play(self, now):
+        """Count overmodulation per play of each piece; when a play ends its
+        count replaces the piece's previous result (so a fix shows up on the
+        next go-around). Called with self.lock held."""
+        if now.get("error") and not now.get("playing"):
+            return
+        key = now.get("key") if now.get("playing") else None
+        p = self.play
+        if p and p["key"] != key:
+            self._finish_play(p)
+            self.play = p = None
+        if key and p is None:
+            self.play = {"key": key, "ovm": 0, "vol": (self.fm30 or {}).get("vol"),
+                         "full": self.play_init and self.link.alive(), "t0": time.time(), "at": []}
+        self.play_init = True
+
+    def _finish_play(self, p):
+        if not p["full"] and not p["ovm"]:
+            return                     # joined mid-piece with nothing seen: keep the last full result
+        prev = self.plays_store.data.get(p["key"]) or {}
+        self.plays_store.data[p["key"]] = {
+            "ovm": p["ovm"], "vol": p["vol"], "at": time.strftime("%Y-%m-%d %H:%M"),
+            "plays": int(prev.get("plays", 0)) + 1, "partial": not p["full"],
+            "secs": int(time.time() - p["t0"]), "times": p["at"]}
+        try:
+            self.plays_store.save()
+        except OSError as ex:
+            self.log(f"plays: cannot save: {ex}")
+        if p["ovm"]:
+            self.log(f"overmodulation: {p['ovm']} during {p['key']} (vol {p['vol']})")
+
+    def api_pieces(self):
+        d = self.show.pieces()
+        with self.lock:
+            cur = dict(self.play) if self.play else None
+            for pc in d.get("pieces", []):
+                pc["ovm"] = self.plays_store.data.get(pc["key"])
+                now_ = cur if cur and cur["key"] == pc["key"] else None
+                pc["ovm_now"] = now_["ovm"] if now_ else None
+                pc["ovm_now_detail"] = {"secs": int(time.time() - now_["t0"]), "times": now_["at"]} if now_ else None
+        d["vol_default"] = self.s.get("vol_default", -1)
+        return d
 
     # ------------------------------------------------------------ TX with the show
     def _tx_auto(self, now):
@@ -468,8 +519,7 @@ class Daemon:
                 "fm30": self.fm30, "fm30_age": round(time.time() - self.fm30_at, 1) if self.fm30_at else None,
                 "show": self.now, "tx_auto_state": self.tx_state,
                 "ovm": {"total": self.ovm_last, "last_min": sum(n for _, n in self.ovm_hist),
-                        "piece": self.ovm_piece.get(self.now.get("key"), 0) if self.now.get("playing") else None,
-                        "by_piece": dict(self.ovm_piece)},
+                        "piece": self.play["ovm"] if self.play else None},
                 "idle_off_in": (max(0, round(float(self.s.get("tx_off_grace_s", 60)) - (time.monotonic() - self.idle_since)))
                                 if self.idle_since else None),
                 "rds": {"auto": self.s.get("rds_auto"), "ps_pages": lay.get("ps", []), "rt_pages": lay.get("rt", []),
@@ -641,7 +691,7 @@ def make_handler(d):
                 if method == "PUT" and path == "/api/settings":
                     return self._json(200, d.api_settings_put(self._body()))
                 if method == "GET" and path == "/api/pieces":
-                    return self._json(200, d.show.pieces())
+                    return self._json(200, d.api_pieces())
                 if method == "PUT" and path == "/api/piece":
                     b = self._body()
                     return self._json(200, d.api_piece_put(b.get("key"), b.get("names") or {}))
