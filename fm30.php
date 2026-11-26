@@ -218,7 +218,7 @@
     <div class="card"><h3>Station identity</h3>
       <div class="opt"><div><div class="t"><span class="mk">1</span> Station name</div>
           <div class="d">What radios show as your station (8 characters). With car-friendly text on, it stays on screen the whole show.</div></div>
-        <div class="ctl"><input type="text" id="r-name" maxlength="8" size="10" class="mono" oninput="cnt(this,8)"><span class="cnt"></span>
+        <div class="ctl"><input type="text" id="r-name" maxlength="8" size="10" class="mono" oninput="cnt(this,8);FM.namePreview()" onkeydown="if(event.key==='Enter')FM.setName()"><span class="cnt"></span>
           <button class="buttons" onclick="FM.setName()">Save</button></div></div>
       <div class="opt"><div><div class="t">Station code <span class="kv">(PI)</span></div>
           <div class="d">A 4-character code (0-9, A-F) radios use to recognise your station and keep it in presets. Pick one and leave it:
@@ -389,10 +389,11 @@
     this.q = c => el.querySelector(c);
   }
   Radio.prototype.set = function (o) {
+    this.last = o;
     this.q('.freq').textContent = o.freq != null ? o.freq + ' FM' : 'FM';
     this.q('.dot').className = 'dot' + (o.onair ? ' on' : '');
-    this.q('.rbadge').textContent = o.rds === false ? 'RDS OFF' : 'RDS';
-    const ps = (o.ps || []).length ? o.ps : [''], rt = (o.rt || []).length ? o.rt : [''];
+    this.q('.rbadge').textContent = this.pv != null ? (this.pvSaved ? 'SENDING...' : 'PREVIEW') : (o.rds === false ? 'RDS OFF' : 'RDS');
+    const ps = this.pv != null ? [psCenter(this.pv)] : ((o.ps || []).length ? o.ps : ['']), rt = (o.rt || []).length ? o.rt : [''];
     const sig = JSON.stringify([ps, rt, o.ps_s, o.rt_s]);
     if (sig === this.sig) return;
     this.sig = sig; this.ps = ps; this.rt = rt; this.pi = this.ri = 0;
@@ -410,6 +411,17 @@
     if (this.ps.length > 1) this.t1 = setInterval(showPS, (o.ps_s || 4) * 1000);
     if (this.rt.length > 1) this.t2 = setInterval(showRT, (o.rt_s || 20) * 1000);
   };
+  Radio.prototype.preview = function (text, saved) {   // null = back to what is on air
+    this.pv = text; this.pvSaved = !!saved;
+    if (this.last) this.set(this.last);
+  };
+  // the plugin centres a short station name in the 8 characters (ps_center)
+  function psCenter(t) {
+    t = String(t || '').slice(0, 8);
+    if (SET && SET.ps_center === false || t.length >= 8) return t;
+    const pad = 8 - t.length, l = Math.floor(pad / 2);
+    return (' '.repeat(l) + t + ' '.repeat(pad - l)).replace(/\s+$/, '');
+  }
   Radio.prototype.hl = function (zone, on) {
     this.el.querySelectorAll('.zone').forEach(z => z.classList.toggle('hl', on && z.dataset.z === zone));
   };
@@ -454,7 +466,10 @@
       kv('Station code / program type', f.pi != null ? f.pi + ' / ' + (PTY[f.pty] || f.pty) : '-') + kv('Uptime', f.uptime != null ? f.uptime + ' s' : '-');
     const live = {freq: f.freq, onair: !!f.tx, rds: !!f.rds, ps: f.ps != null ? [f.ps] : [], rt: f.rt != null ? [f.rt] : []};
     if (RLIVE) RLIVE.set(live);
-    if (RRDS) RRDS.set(live);
+    if (RRDS) {
+      if (RRDS.pv != null && RRDS.pvSaved && (String(f.ps || '').trim() === psCenter(RRDS.pv).trim() || Date.now() - RRDS.pvAt > 15000)) RRDS.pv = null;
+      RRDS.set(live);
+    }
     ['RDS', 'MS', 'STEREO', 'TP', 'TA'].forEach(k => {
       const el = $('f-' + k), v = f[k === 'RDS' ? 'rds' : k.toLowerCase()];
       if (el && v != null && !el._busy) el.checked = !!v;
@@ -505,7 +520,21 @@
     const v = $('r-name').value.trim();
     if (!v) { toast('Enter a station name', false); return; }
     const d = await call('settings', 'PUT', {station_ps: v});
-    if (d.ok) { toast('Station name saved', true); SET = d.settings; loadSettings(); } else toast(d.error || 'failed', false);
+    if (!d.ok) { toast(d.error || 'failed', false); return; }
+    SET = d.settings; loadSettings();
+    if (SET.rds_auto === false) {
+      RRDS.preview(null);
+      toast('Saved. "Follow the show automatically" is off, so send it by hand below to put it on air.', true);
+      return;
+    }
+    RRDS.pvAt = Date.now(); RRDS.preview(v, true);      // shows SENDING... until the FM30 reports it
+    toast('Station name saved: on air in a few seconds', true);
+    if (SEL) FM.preview();
+    refresh();
+  };
+  FM.namePreview = function () {
+    const v = $('r-name').value.trim();
+    RRDS.preview(v && (!SET || v !== SET.station_ps) ? v : null);
   };
   FM.setPI = function () {
     const v = val('r-pi').toUpperCase();
